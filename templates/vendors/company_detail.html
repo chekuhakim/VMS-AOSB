@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h2 class="text-lg font-semibold text-slate-900">{{ company.name }}</h2>
+      <div class="mt-2">
+        {% if company.registration_status == "approved" %}
+          {% include "components/status_badge.html" with label="Approved" tone="success" %}
+        {% elif company.registration_status == "rejected" %}
+          {% include "components/status_badge.html" with label="Rejected" tone="danger" %}
+        {% else %}
+          {% include "components/status_badge.html" with label=company.get_registration_status_display tone="warning" %}
+        {% endif %}
+      </div>
+    </div>
+    <a href="{% url 'vendors:wizard_step' company.pk 1 %}"
+       class="inline-flex justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 shadow-sm hover:bg-slate-50">
+      Edit registration
+    </a>
+  </div>
+
+  {% if company.registration_status == "rejected" and reason_messages %}
+    <div class="mb-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+      <p class="font-semibold">Rejected by system rules</p>
+      <ul class="mt-2 list-disc space-y-1 pl-5">
+        {% for msg in reason_messages %}
+          <li>{{ msg }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  <div class="grid gap-4 lg:grid-cols-2">
+    <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h3 class="text-sm font-semibold text-slate-900">Company profile</h3>
+      <dl class="mt-3 space-y-2 text-sm">
+        <div><dt class="text-xs text-slate-500">Contact</dt><dd>{{ company.primary_contact_name }} · {{ company.contact_number }}</dd></div>
+        <div><dt class="text-xs text-slate-500">Official email</dt><dd>{{ company.official_email }}</dd></div>
+      </dl>
+    </section>
+    <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h3 class="text-sm font-semibold text-slate-900">SSM</h3>
+      <dl class="mt-3 space-y-2 text-sm">
+        <div><dt class="text-xs text-slate-500">Registration no.</dt><dd>{{ company.ssm_registration_number|default:"—" }}</dd></div>
+        <div><dt class="text-xs text-slate-500">Incorporation</dt><dd>{{ company.date_of_incorporation|date:"d M Y"|default:"—" }}</dd></div>
+        <div><dt class="text-xs text-slate-500">Document</dt>
+          <dd>{% if latest_docs.ssm %}{{ latest_docs.ssm.original_filename }} (v{{ latest_docs.ssm.version }}){% else %}—{% endif %}</dd>
+        </div>
+      </dl>
+    </section>
+    <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h3 class="text-sm font-semibold text-slate-900">CIDB</h3>
+      <dl class="mt-3 space-y-2 text-sm">
+        <div><dt class="text-xs text-slate-500">No. / grade</dt><dd>{{ company.cidb_registration_number|default:"—" }} · {{ company.cidb_grade|default:"—" }}</dd></div>
+        <div><dt class="text-xs text-slate-500">Categories</dt><dd>{{ company.cidb_categories|join:", "|default:"—" }}</dd></div>
+        <div><dt class="text-xs text-slate-500">Expiry</dt><dd>{{ company.cidb_certificate_expiry|date:"d M Y"|default:"—" }}</dd></div>
+      </dl>
+    </section>
+    <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h3 class="text-sm font-semibold text-slate-900">ST / LHDN / HSE</h3>
+      <dl class="mt-3 space-y-2 text-sm">
+        <div><dt class="text-xs text-slate-500">Electrical</dt>
+          <dd>{% if company.includes_electrical_work %}Yes · {{ company.st_license_number }}{% elif company.includes_electrical_work == False %}No{% else %}—{% endif %}</dd>
+        </div>
+        <div><dt class="text-xs text-slate-500">LHDN TIN</dt><dd>{{ company.lhdn_tin|default:"—" }}</dd></div>
+        <div><dt class="text-xs text-slate-500">HSE rep</dt><dd>{{ company.hse_representative_name|default:"—" }}</dd></div>
+      </dl>
+    </section>
+  </div>
+
+  {% if company.declaration_accepted %}
+    <section class="mt-4 rounded-xl border border-slate-200 bg-white p-5 text-sm shadow-sm">
+      <h3 class="font-semibold text-slate-900">Declaration</h3>
+      <p class="mt-2 text-xs text-slate-500">Version {{ company.declaration_text_version }} · {{ company.declaration_accepted_at|date:"d M Y H:i" }} · IP {{ company.declaration_ip|default:"—" }}</p>
+      <p class="mt-3 text-slate-600">{{ declaration_text }}</p>
+    </section>
+  {% endif %}
+
+  <p class="mt-6">
+    <a href="{% url 'vendors:your_company' %}" class="text-sm font-medium text-brand hover:text-brand-700">← Back to your companies</a>
+  </p>
+{% endblock %}

@@ -1,0 +1,25 @@
+{
+  "name": "vms",
+  "version": "1.0.0",
+  "description": "ISO 9001-aligned vendor management for a Malaysian Towerco.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nurin-aosb/VMS-AOSB.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/nurin-aosb/VMS-AOSB/issues"
+  },
+  "homepage": "https://github.com/nurin-aosb/VMS-AOSB#readme",
+  "devDependencies": {
+    "prettier": "^3.9.6",
+    "prettier-plugin-tailwindcss": "^0.8.1"
+  }
+}

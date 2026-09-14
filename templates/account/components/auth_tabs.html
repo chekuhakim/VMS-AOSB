@@ -1,0 +1,23 @@
+{# Sign in / Sign up tab strip — pass active as "login" or "signup" #}
+<div class="mb-6 flex gap-8 border-b border-slate-200">
+  <a
+    href="{% url 'account_login' %}"
+    class="relative pb-3 text-sm font-semibold transition
+           {% if active == 'login' %}text-brand{% else %}text-slate-400 hover:text-slate-700{% endif %}"
+  >
+    Sign in
+    {% if active == 'login' %}
+      <span class="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-brand"></span>
+    {% endif %}
+  </a>
+  <a
+    href="{% url 'account_signup' %}"
+    class="relative pb-3 text-sm font-semibold transition
+           {% if active == 'signup' %}text-brand{% else %}text-slate-400 hover:text-slate-700{% endif %}"
+  >
+    Sign up
+    {% if active == 'signup' %}
+      <span class="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-brand"></span>
+    {% endif %}
+  </a>
+</div>

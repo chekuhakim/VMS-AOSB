@@ -1,0 +1,42 @@
+{# Top bar: page title + company switcher (vendors) + account #}
+<header class="sticky top-0 z-10 border-b border-slate-200 bg-cream/90 shadow-sm backdrop-blur">
+  <div class="flex h-14 items-center justify-between gap-4 px-6 lg:px-8">
+    <div class="min-w-0">
+      <h1 class="truncate text-base font-semibold text-slate-900">{{ page_title|default:"Dashboard" }}</h1>
+    </div>
+    <div class="flex shrink-0 items-center gap-3">
+      {% if is_vendor_user and vendor_companies %}
+        <form method="post" action="{% url 'accounts:switch_company' %}" class="flex items-center gap-2">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.path }}">
+          <label for="active-company" class="sr-only">Active company</label>
+          <select
+            id="active-company"
+            name="company_id"
+            onchange="this.form.submit()"
+            class="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+          >
+            {% for company in vendor_companies %}
+              <option value="{{ company.pk }}" {% if active_company and active_company.pk == company.pk %}selected{% endif %}>
+                {{ company.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </form>
+      {% elif is_vendor_user %}
+        {% include "components/status_badge.html" with label="No company yet" tone="warning" %}
+      {% endif %}
+
+      {% if is_staff_user %}
+        {% include "components/status_badge.html" with label="Staff" tone="info" %}
+      {% endif %}
+
+      {% if user.is_authenticated %}
+        <span class="hidden text-xs text-slate-500 sm:inline">{{ user.get_username }}</span>
+        <a href="{% url 'account_logout' %}" class="text-sm font-medium text-brand hover:text-brand-700">Sign out</a>
+      {% else %}
+        <a href="{% url 'account_login' %}" class="text-sm font-medium text-brand hover:text-brand-700">Sign in</a>
+      {% endif %}
+    </div>
+  </div>
+</header>

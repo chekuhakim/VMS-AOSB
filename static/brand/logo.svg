@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 40" fill="none" role="img" aria-label="alpha orange">
+  <circle cx="16" cy="20" r="12" fill="#FF6F00"/>
+  <path d="M10 24c4-10 12-14 18-12" stroke="#FFF4EB" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+  <text x="36" y="26" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700" fill="#FF6F00">alpha orange</text>
+</svg>

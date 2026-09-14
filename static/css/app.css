@@ -1,0 +1,10 @@
+/* Project-level tweaks on top of Tailwind utility classes. */
+
+body {
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* Auth field icons sit inside padded inputs */
+.auth-input-icon {
+  pointer-events: none;
+}

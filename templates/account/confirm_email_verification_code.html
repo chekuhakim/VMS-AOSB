@@ -1,0 +1,75 @@
+{% extends "account/base_auth.html" %}
+
+{% block head_title %}Confirm email{% endblock %}
+
+{% block content %}
+  <h1 class="text-xl font-semibold text-slate-900">Confirm your email</h1>
+  <p class="mt-1 text-sm text-slate-600">
+    Enter the verification code we sent to
+    {% if email %}<span class="font-medium text-slate-800">{{ email }}</span>{% else %}your company email{% endif %}.
+    In local development the code is printed in the server console.
+  </p>
+
+  <form method="post" action="{% url 'account_email_verification_sent' %}" class="mt-6 space-y-4">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      <div class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        {{ form.non_field_errors }}
+      </div>
+    {% endif %}
+
+    <div>
+      <label for="id_code" class="block text-sm font-medium text-slate-600">Verification code</label>
+      <input
+        type="text"
+        name="code"
+        id="id_code"
+        value="{{ form.code.value|default:'' }}"
+        inputmode="text"
+        autocomplete="one-time-code"
+        required
+        class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm tracking-widest shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+      >
+      {% if form.code.errors %}
+        <p class="mt-1 text-xs text-rose-600">{{ form.code.errors.0 }}</p>
+      {% endif %}
+    </div>
+
+    <button
+      type="submit"
+      class="w-full rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
+    >
+      Verify email
+    </button>
+  </form>
+
+  {% if can_resend %}
+    <form method="post" action="{% url 'account_email_verification_sent' %}" class="mt-3">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="resend">
+      <button
+        type="submit"
+        class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-brand-50"
+      >
+        Request new code
+      </button>
+    </form>
+  {% endif %}
+
+  <div class="mt-6 flex flex-col items-center gap-1 text-center text-sm text-slate-600">
+    {# Abort pending allauth verification stage first — plain /register/ would bounce back here #}
+    <a
+      href="{% url 'account_abort_email_verification' %}?next=signup"
+      class="inline-block rounded-lg px-3 py-2 font-medium text-brand hover:text-brand-700"
+    >
+      Back to sign up
+    </a>
+    <a
+      href="{% url 'account_abort_email_verification' %}?next=login"
+      class="inline-block rounded-lg px-3 py-2 text-slate-500 hover:text-brand"
+    >
+      Sign in
+    </a>
+  </div>
+{% endblock %}

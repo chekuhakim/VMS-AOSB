@@ -1,0 +1,16 @@
+{# Reusable compliance / workflow status pill
+   tone: success | warning | danger | info | neutral
+#}
+{% with tone=tone|default:"neutral" %}
+  <span
+    class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
+      {% if tone == 'success' %}bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20
+      {% elif tone == 'warning' %}bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-600/20
+      {% elif tone == 'danger' %}bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20
+      {% elif tone == 'info' %}bg-brand-50 text-brand ring-1 ring-inset ring-brand/20
+      {% else %}bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-500/10
+      {% endif %}"
+  >
+    {{ label }}
+  </span>
+{% endwith %}

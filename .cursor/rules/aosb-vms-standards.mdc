@@ -1,0 +1,29 @@
+---
+description: AOSB VMS coding standards (Django, templates, secrets)
+alwaysApply: true
+---
+
+# AOSB VMS Coding Standards
+
+## Python
+
+- Write clean, self-explaining Python with **explicit type hints** on functions and methods.
+- Add **concise inline comments** only for critical business or compliance logic (e.g. document expiry rules, status locks, ISO workflow gates).
+- For complex blocks, briefly explain *why* the logic exists so another developer can debug it.
+
+## Django forms & documents
+
+- Use **Django Form / ModelForm** validation for document uploads and expiry dates — do not rely on ad-hoc view checks alone.
+- Reject invalid PDFs, missing dates, and expired/invalid date ranges in `clean()` / field validators.
+
+## Templates & Tailwind
+
+- Style **only** with Tailwind CSS utility classes inside HTML templates (no bespoke CSS frameworks).
+- Keep templates under `/templates` with reusable components (`sidebar`, `header`, `status_badge`, etc.).
+- Prefer `{% include %}` for shared chrome; keep page templates thin.
+
+## Secrets & environment
+
+- **Never** hardcode or commit secret keys, tokens, or database passwords.
+- Load all secrets via **django-environ** from `.env` (see `.env.example`).
+- Keep `.env` out of git; document new variables in `.env.example` without real values.

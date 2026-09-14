@@ -1,0 +1,11 @@
+.venv/
+venv/
+node_modules/
+staticfiles/
+media/
+db.sqlite3
+*.min.js
+*.min.css
+package-lock.json
+# Django templates — Prettier breaks {% %} tags; do not auto-format
+templates/

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <p class="text-sm text-slate-600">Companies registered under your vendor account.</p>
+    <a href="{% url 'vendors:register_company' %}"
+       class="inline-flex items-center justify-center rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700">
+      Register company
+    </a>
+  </div>
+
+  {% if companies %}
+    <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+      <table class="min-w-full text-left text-sm">
+        <thead class="border-b border-slate-200 bg-cream text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <tr>
+            <th class="px-4 py-3">Company</th>
+            <th class="px-4 py-3">Status</th>
+            <th class="px-4 py-3">Updated</th>
+            <th class="px-4 py-3"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for company in companies %}
+            <tr>
+              <td class="px-4 py-3 font-medium text-slate-900">{{ company.name }}</td>
+              <td class="px-4 py-3">
+                {% if company.registration_status == "approved" %}
+                  {% include "components/status_badge.html" with label="Approved" tone="success" %}
+                {% elif company.registration_status == "rejected" %}
+                  {% include "components/status_badge.html" with label="Rejected" tone="danger" %}
+                {% elif company.registration_status == "submitted" %}
+                  {% include "components/status_badge.html" with label="Submitted" tone="info" %}
+                {% else %}
+                  {% include "components/status_badge.html" with label="Draft" tone="warning" %}
+                {% endif %}
+              </td>
+              <td class="px-4 py-3 text-slate-500">{{ company.updated_at|date:"d M Y H:i" }}</td>
+              <td class="space-x-2 px-4 py-3 text-right">
+                <a href="{% url 'vendors:company_detail' company.pk %}" class="font-medium text-brand hover:text-brand-700">View</a>
+                {% if company.registration_status == "draft" %}
+                  <a href="{% url 'vendors:wizard_step' company.pk company.wizard_step %}" class="font-medium text-slate-600 hover:text-brand">Continue</a>
+                {% else %}
+                  <a href="{% url 'vendors:wizard_step' company.pk 1 %}" class="font-medium text-slate-600 hover:text-brand">Edit</a>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center shadow-sm">
+      <p class="text-sm text-slate-600">No companies yet. Register your first company to continue.</p>
+      <a href="{% url 'vendors:register_company' %}" class="mt-4 inline-flex rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">
+        Start registration
+      </a>
+    </div>
+  {% endif %}
+{% endblock %}
