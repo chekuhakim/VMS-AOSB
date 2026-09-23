@@ -3,20 +3,18 @@
 
 {% block head_title %}Sign up{% endblock %}
 
-{% block auth_body %}
-<div class="flex min-h-full flex-col">
-  {% include "account/components/auth_topbar.html" %}
-
-  <div class="flex min-h-0 flex-1 flex-col lg:flex-row">
+{# Hero signup layout — keeps shared topbar from base.html #}
+{% block main %}
+  <div class="flex min-h-0 flex-1 flex-col bg-gradient-to-b from-peach to-brand-50 lg:flex-row">
     <div class="relative hidden min-h-[280px] flex-1 lg:block">
       <img
         src="{% static 'brand/hero banner.webp' %}"
         alt=""
         class="absolute inset-0 h-full w-full rounded-tr-[2.5rem] object-cover"
-      >
+      />
     </div>
 
-    <div class="flex w-full flex-col bg-gradient-to-b from-peach to-brand-50 lg:w-[min(100%,28rem)] xl:w-[32rem]">
+    <div class="flex w-full flex-col lg:w-[min(100%,28rem)] xl:w-[32rem]">
       <div class="flex flex-1 flex-col justify-center px-6 py-10 sm:px-10">
         {% if messages %}
           <div class="mb-4 space-y-2">
@@ -32,7 +30,7 @@
           <form method="post" action="{% url 'account_signup' %}" class="space-y-4">
             {% csrf_token %}
             {% if redirect_field_value %}
-              <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">
+              <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
             {% endif %}
 
             {% if form.non_field_errors %}
@@ -47,9 +45,16 @@
                 <span class="auth-input-icon absolute inset-y-0 left-3 flex items-center text-slate-400">
                   <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
                 </span>
-                <input type="text" name="username" id="id_username" value="{{ form.username.value|default:'' }}" required autocomplete="username"
+                <input
+                  type="text"
+                  name="username"
+                  id="id_username"
+                  value="{{ form.username.value|default:'' }}"
+                  required
+                  autocomplete="username"
                   placeholder="Enter your username"
-                  class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm shadow-sm placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand">
+                  class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm shadow-sm placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+                />
               </div>
               {% if form.username.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.username.errors.0 }}</p>{% endif %}
             </div>
@@ -60,9 +65,16 @@
                 <span class="auth-input-icon absolute inset-y-0 left-3 flex items-center text-slate-400">
                   <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>
                 </span>
-                <input type="email" name="email" id="id_email" value="{{ form.email.value|default:'' }}" required autocomplete="email"
+                <input
+                  type="email"
+                  name="email"
+                  id="id_email"
+                  value="{{ form.email.value|default:'' }}"
+                  required
+                  autocomplete="email"
                   placeholder="Enter your company email"
-                  class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm shadow-sm placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand">
+                  class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm shadow-sm placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+                />
               </div>
               {% if form.email.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.email.errors.0 }}</p>{% endif %}
             </div>
@@ -73,13 +85,16 @@
                 <span class="auth-input-icon absolute inset-y-0 left-3 flex items-center text-slate-400">
                   <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>
                 </span>
-                <input type="password" name="password1" id="id_password1" required autocomplete="new-password"
+                <input
+                  type="password"
+                  name="password1"
+                  id="id_password1"
+                  required
+                  autocomplete="new-password"
                   placeholder="Enter your password"
-                  class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-sm shadow-sm placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand">
-                <button type="button" data-toggle-password="id_password1" aria-label="Show password"
-                  class="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600">
-                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                </button>
+                  class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-sm shadow-sm placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+                />
+                {% include "account/components/auth_password_toggle.html" with input_id="id_password1" %}
               </div>
               {% if form.password1.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.password1.errors.0 }}</p>{% endif %}
             </div>
@@ -90,13 +105,16 @@
                 <span class="auth-input-icon absolute inset-y-0 left-3 flex items-center text-slate-400">
                   <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>
                 </span>
-                <input type="password" name="password2" id="id_password2" required autocomplete="new-password"
+                <input
+                  type="password"
+                  name="password2"
+                  id="id_password2"
+                  required
+                  autocomplete="new-password"
                   placeholder="Confirm your password"
-                  class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-sm shadow-sm placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand">
-                <button type="button" data-toggle-password="id_password2" aria-label="Show password"
-                  class="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600">
-                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                </button>
+                  class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-sm shadow-sm placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+                />
+                {% include "account/components/auth_password_toggle.html" with input_id="id_password2" %}
               </div>
               {% if form.password2.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.password2.errors.0 }}</p>{% endif %}
             </div>
@@ -106,23 +124,10 @@
             </button>
           </form>
 
-          {% if google_oauth_enabled %}
-            <div class="my-6 flex items-center gap-3 text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              <span class="h-px flex-1 bg-slate-200"></span>
-              Or sign up with
-              <span class="h-px flex-1 bg-slate-200"></span>
-            </div>
-            <a
-              href="{% provider_login_url 'google' %}"
-              class="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50"
-            >
-              Google
-            </a>
-          {% endif %}
+          {% include "account/components/auth_google_button.html" with label="Sign up with Google" %}
         </div>
       </div>
-      {% include "account/components/auth_footer.html" %}
+      {% include "components/app_footer.html" %}
     </div>
   </div>
-</div>
 {% endblock %}

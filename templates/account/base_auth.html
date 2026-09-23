@@ -1,72 +1,38 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="en" class="h-full">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block head_title %}{{ page_title|default:"Account" }}{% endblock %} · {{ brand.tagline }}</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              DEFAULT: '#FF6F00',
-              50: '#FFF4EB',
-              100: '#FFE8D6',
-              600: '#FF6F00',
-              700: '#E65100',
-            },
-            cream: { DEFAULT: '#FAF7F2' },
-            peach: { DEFAULT: '#FFE8D6' },
-          },
-          fontFamily: {
-            sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-          },
-        },
-      },
-    }
-  </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/app.css' %}">
-</head>
-<body class="h-full bg-cream font-sans text-slate-900 antialiased">
-  {% block auth_body %}
-  {# Default: simple peach page for secondary auth screens #}
-  <div class="flex min-h-full flex-col">
-    {% include "account/components/auth_topbar.html" %}
-    <main class="flex flex-1 flex-col bg-gradient-to-b from-peach to-brand-50">
-      <div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-10">
-        {% if messages %}
-          <div class="mb-4 space-y-2">
-            {% for message in messages %}
-              <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm">{{ message }}</div>
-            {% endfor %}
-          </div>
-        {% endif %}
-        <div class="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
-          {% block content %}{% endblock %}
-        </div>
-      </div>
-      {% include "account/components/auth_footer.html" %}
-    </main>
-  </div>
-  {% endblock %}
+{% extends "base.html" %}
 
+{% block title %}{% block head_title %}{{ page_title|default:"Account" }}{% endblock %}{% endblock %}
+
+{# Default secondary auth screens: centered card on the shared peach shell #}
+{% block content %}
+  <div class="mx-auto w-full max-w-md">
+    <div class="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
+      {% block auth_content %}{% endblock %}
+    </div>
+  </div>
+{% endblock %}
+
+{% block extra_js %}
   <script>
     document.querySelectorAll('[data-toggle-password]').forEach(function (btn) {
+      function syncIcons(input) {
+        var hidden = input.type === 'password'
+        var slash = btn.querySelector('[data-eye-icon="slash"]')
+        var open = btn.querySelector('[data-eye-icon="open"]')
+        if (slash) slash.classList.toggle('hidden', !hidden)
+        if (open) open.classList.toggle('hidden', hidden)
+        btn.setAttribute('aria-label', hidden ? 'Show password' : 'Hide password')
+      }
+
+      var input = document.getElementById(btn.getAttribute('data-toggle-password'))
+      if (input) syncIcons(input)
+
       btn.addEventListener('click', function () {
-        var id = btn.getAttribute('data-toggle-password');
-        var input = document.getElementById(id);
-        if (!input) return;
-        var show = input.type === 'password';
-        input.type = show ? 'text' : 'password';
-        btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
-      });
-    });
+        var id = btn.getAttribute('data-toggle-password')
+        var field = document.getElementById(id)
+        if (!field) return
+        field.type = field.type === 'password' ? 'text' : 'password'
+        syncIcons(field)
+      })
+    })
   </script>
-</body>
-</html>
+{% endblock %}

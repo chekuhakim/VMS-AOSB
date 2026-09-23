@@ -1,102 +1,534 @@
-{% extends "base.html" %}
+{% extends "vendors/base_wizard.html" %}
 
-{% block content %}
-  <div class="mb-6">
-    <p class="text-sm text-slate-600">{{ company.name }} · Step {{ step }} of 6</p>
-    <ol class="mt-4 flex flex-wrap gap-2">
-      {% for num, meta in steps.items %}
-        <li>
-          <a href="{% url 'vendors:wizard_step' company.pk num %}"
-             class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium
-                    {% if num == step %}bg-brand text-white
-                    {% elif num <= company.wizard_step %}bg-brand-50 text-brand
-                    {% else %}bg-slate-100 text-slate-500{% endif %}">
-            {{ num }}. {{ meta.title }}
-          </a>
-        </li>
-      {% endfor %}
-    </ol>
+{% block head_title %}Register your company{% endblock %}
+
+{% block wizard_content %}
+  <div class="mb-8">
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+      Register your company
+    </h1>
+    <p class="mt-2 max-w-2xl text-sm text-slate-600 sm:text-base">
+      Complete all 6 sections to become eligible for {{ brand.legal_name }} tenders and purchase
+      orders.
+    </p>
   </div>
 
-  <div class="mx-auto max-w-2xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-    <h2 class="text-lg font-semibold text-slate-900">
-      {% for num, meta in steps.items %}{% if num == step %}{{ meta.title }}{% endif %}{% endfor %}
-    </h2>
+  {% include "vendors/components/wizard_stepper.html" %}
 
-    <form method="post" enctype="multipart/form-data" class="mt-6 space-y-5">
+  <div class="wizard-panel rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
+    <h2 class="text-lg font-semibold text-slate-900">
+      {% for num, meta in steps.items %}{% if num == step %}{{ meta.short }}{% endif %}{% endfor %}
+    </h2>
+    <p class="mt-1 text-sm text-slate-600">
+      {% for num, meta in steps.items %}{% if num == step %}{{ meta.hint }}{% endif %}{% endfor %}
+    </p>
+
+    <form method="post" enctype="multipart/form-data" class="mt-6" id="wizard-form">
       {% csrf_token %}
+      <input type="hidden" name="goto_step" id="wizard-goto-step" value="" />
 
       {% if form.non_field_errors %}
-        <div class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ form.non_field_errors }}</div>
-      {% endif %}
-
-      {% for field in form %}
-        <div>
-          {% if field.name == "declaration_accepted" or field.name == "is_enterprise" %}
-            <label class="flex items-start gap-2 text-sm text-slate-700">
-              {{ field }}
-              <span>{{ field.label }}</span>
-            </label>
-          {% elif field.name == "cidb_categories_input" or field.name == "includes_electrical_work" %}
-            <p class="block text-sm font-medium text-slate-600">{{ field.label }}</p>
-            <div class="mt-2 space-y-2 text-sm text-slate-700">{{ field }}</div>
-          {% else %}
-            <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-slate-600">{{ field.label }}</label>
-            {{ field }}
-          {% endif %}
-          {% if field.errors %}<p class="mt-1 text-xs text-rose-600">{{ field.errors.0 }}</p>{% endif %}
+        <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          {{ form.non_field_errors }}
         </div>
-      {% endfor %}
-
-      {% if step == 2 and has_pdf.ssm %}
-        <p class="text-xs text-emerald-700">SSM PDF already on file — upload again only to add a new version.</p>
-      {% endif %}
-      {% if step == 3 and has_pdf.cidb %}
-        <p class="text-xs text-emerald-700">CIDB PDF already on file — upload again only to add a new version.</p>
-      {% endif %}
-      {% if step == 4 and has_pdf.st %}
-        <p class="text-xs text-emerald-700">ST PDF already on file — upload again only to add a new version.</p>
       {% endif %}
 
-      {% if step == 6 and declaration_text %}
-        <div class="rounded-xl border border-slate-200 bg-cream p-4 text-sm text-slate-700">
-          <p class="font-semibold text-slate-900">Profile summary</p>
-          <dl class="mt-3 grid gap-2 sm:grid-cols-2">
-            <div><dt class="text-xs text-slate-500">Company</dt><dd>{{ company.name }}</dd></div>
-            <div><dt class="text-xs text-slate-500">Contact</dt><dd>{{ company.primary_contact_name }} · {{ company.contact_number }}</dd></div>
-            <div><dt class="text-xs text-slate-500">SSM</dt><dd>{{ company.ssm_registration_number|default:"—" }}</dd></div>
-            <div><dt class="text-xs text-slate-500">CIDB</dt><dd>{{ company.cidb_registration_number|default:"—" }} ({{ company.cidb_grade|default:"—" }})</dd></div>
+      {% if step == 1 %}
+        <div class="grid gap-5 sm:grid-cols-2">
+          {% for field in form %}
             <div>
-              <dt class="text-xs text-slate-500">Electrical / ST</dt>
-              <dd>
-                {% if company.includes_electrical_work %}Yes · {{ company.st_license_number }}
-                {% elif company.includes_electrical_work == False %}No
-                {% else %}—{% endif %}
-              </dd>
+              <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-slate-700">
+                {{ field.label }}
+              </label>
+              {{ field }}
+              {% if field.errors %}<p class="mt-1 text-xs text-rose-600">{{ field.errors.0 }}</p>{% endif %}
             </div>
-            <div><dt class="text-xs text-slate-500">LHDN TIN</dt><dd>{{ company.lhdn_tin|default:"—" }}</dd></div>
-          </dl>
-          <p class="mt-4 font-semibold text-slate-900">Declaration</p>
-          <p class="mt-2 text-xs leading-relaxed text-slate-600">{{ declaration_text }}</p>
+          {% endfor %}
+        </div>
+
+      {% elif step == 2 %}
+        <div class="space-y-5">
+          <div class="grid gap-5 sm:grid-cols-2">
+            <div>
+              <label for="{{ form.ssm_registration_number.id_for_label }}" class="block text-sm font-medium text-slate-700">
+                {{ form.ssm_registration_number.label }}
+              </label>
+              {{ form.ssm_registration_number }}
+              {% if form.ssm_registration_number.errors %}
+                <p class="mt-1 text-xs text-rose-600">{{ form.ssm_registration_number.errors.0 }}</p>
+              {% endif %}
+            </div>
+            <div>
+              <label for="{{ form.date_of_incorporation.id_for_label }}" class="block text-sm font-medium text-slate-700">
+                {{ form.date_of_incorporation.label }}
+              </label>
+              {{ form.date_of_incorporation }}
+              {% if form.date_of_incorporation.errors %}
+                <p class="mt-1 text-xs text-rose-600">{{ form.date_of_incorporation.errors.0 }}</p>
+              {% endif %}
+            </div>
+          </div>
+
+          <label class="flex items-start gap-3 rounded-xl border border-slate-200 bg-cream/60 px-4 py-3 text-sm text-slate-700">
+            {{ form.is_enterprise }}
+            <span>{{ form.is_enterprise.label }}</span>
+          </label>
+          {% if form.is_enterprise.errors %}
+            <p class="text-xs text-rose-600">{{ form.is_enterprise.errors.0 }}</p>
+          {% endif %}
+
+          <div id="ssm-expiry-wrap" class="{% if not form.is_enterprise.value %}hidden{% endif %}">
+            <label for="{{ form.ssm_document_expiry.id_for_label }}" class="block text-sm font-medium text-slate-700">
+              {{ form.ssm_document_expiry.label }}
+            </label>
+            {{ form.ssm_document_expiry }}
+            {% if form.ssm_document_expiry.errors %}
+              <p class="mt-1 text-xs text-rose-600">{{ form.ssm_document_expiry.errors.0 }}</p>
+            {% endif %}
+          </div>
+
+          <div>
+            <label for="{{ form.ssm_pdf.id_for_label }}" class="block text-sm font-medium text-slate-700">
+              {{ form.ssm_pdf.label }}{% if form.ssm_pdf.field.required %} *{% endif %}
+            </label>
+            {{ form.ssm_pdf }}
+            {% if has_pdf.ssm %}
+              <p class="mt-1 text-xs text-emerald-700">SSM PDF already on file — upload again only for a new version.</p>
+            {% endif %}
+            {% if form.ssm_pdf.errors %}
+              <p class="mt-1 text-xs text-rose-600">{{ form.ssm_pdf.errors.0 }}</p>
+            {% endif %}
+          </div>
+        </div>
+
+      {% elif step == 3 %}
+        <div class="space-y-5">
+          <div class="grid gap-5 sm:grid-cols-2">
+            <div>
+              <label for="{{ form.cidb_registration_number.id_for_label }}" class="block text-sm font-medium text-slate-700">
+                {{ form.cidb_registration_number.label }}
+              </label>
+              {{ form.cidb_registration_number }}
+              {% if form.cidb_registration_number.errors %}
+                <p class="mt-1 text-xs text-rose-600">{{ form.cidb_registration_number.errors.0 }}</p>
+              {% endif %}
+            </div>
+            <div>
+              <label for="{{ form.cidb_grade.id_for_label }}" class="block text-sm font-medium text-slate-700">
+                {{ form.cidb_grade.label }}
+              </label>
+              {{ form.cidb_grade }}
+              {% if form.cidb_grade.errors %}
+                <p class="mt-1 text-xs text-rose-600">{{ form.cidb_grade.errors.0 }}</p>
+              {% endif %}
+            </div>
+            <div>
+              <label for="{{ form.cidb_certificate_expiry.id_for_label }}" class="block text-sm font-medium text-slate-700">
+                {{ form.cidb_certificate_expiry.label }}
+              </label>
+              {{ form.cidb_certificate_expiry }}
+              {% if form.cidb_certificate_expiry.errors %}
+                <p class="mt-1 text-xs text-rose-600">{{ form.cidb_certificate_expiry.errors.0 }}</p>
+              {% endif %}
+            </div>
+          </div>
+          <div>
+            <p class="block text-sm font-medium text-slate-700">{{ form.cidb_categories_input.label }}</p>
+            <div class="mt-2 space-y-2">{{ form.cidb_categories_input }}</div>
+            {% if form.cidb_categories_input.errors %}
+              <p class="mt-1 text-xs text-rose-600">{{ form.cidb_categories_input.errors.0 }}</p>
+            {% endif %}
+          </div>
+          <div>
+            <label for="{{ form.cidb_pdf.id_for_label }}" class="block text-sm font-medium text-slate-700">
+              {{ form.cidb_pdf.label }}{% if form.cidb_pdf.field.required %} *{% endif %}
+            </label>
+            {{ form.cidb_pdf }}
+            {% if has_pdf.cidb %}
+              <p class="mt-1 text-xs text-emerald-700">CIDB PDF already on file — upload again only for a new version.</p>
+            {% endif %}
+            {% if form.cidb_pdf.errors %}
+              <p class="mt-1 text-xs text-rose-600">{{ form.cidb_pdf.errors.0 }}</p>
+            {% endif %}
+          </div>
+        </div>
+
+      {% elif step == 4 %}
+        <div class="space-y-5">
+          <fieldset>
+            <legend class="block text-sm font-medium text-slate-700">
+              {{ form.includes_electrical_work.label }}
+            </legend>
+            <div class="mt-3 flex flex-wrap gap-6 text-sm text-slate-700">
+              {% for radio in form.includes_electrical_work %}
+                <label class="inline-flex items-center gap-2">{{ radio.tag }} {{ radio.choice_label }}</label>
+              {% endfor %}
+            </div>
+            {% if form.includes_electrical_work.errors %}
+              <p class="mt-1 text-xs text-rose-600">{{ form.includes_electrical_work.errors.0 }}</p>
+            {% endif %}
+          </fieldset>
+
+          <div
+            id="st-details-wrap"
+            class="space-y-5 {% if form.includes_electrical_work.value != True and form.includes_electrical_work.value != 'True' %}hidden{% endif %}"
+          >
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label for="{{ form.st_contractor_class.id_for_label }}" class="block text-sm font-medium text-slate-700">
+                  {{ form.st_contractor_class.label }}
+                </label>
+                {{ form.st_contractor_class }}
+                {% if form.st_contractor_class.errors %}
+                  <p class="mt-1 text-xs text-rose-600">{{ form.st_contractor_class.errors.0 }}</p>
+                {% endif %}
+              </div>
+              <div>
+                <label for="{{ form.st_license_number.id_for_label }}" class="block text-sm font-medium text-slate-700">
+                  {{ form.st_license_number.label }}
+                </label>
+                {{ form.st_license_number }}
+                {% if form.st_license_number.errors %}
+                  <p class="mt-1 text-xs text-rose-600">{{ form.st_license_number.errors.0 }}</p>
+                {% endif %}
+              </div>
+              <div>
+                <label for="{{ form.st_certificate_expiry.id_for_label }}" class="block text-sm font-medium text-slate-700">
+                  {{ form.st_certificate_expiry.label }}
+                </label>
+                {{ form.st_certificate_expiry }}
+                {% if form.st_certificate_expiry.errors %}
+                  <p class="mt-1 text-xs text-rose-600">{{ form.st_certificate_expiry.errors.0 }}</p>
+                {% endif %}
+              </div>
+              <div>
+                <label for="{{ form.chargeman_name.id_for_label }}" class="block text-sm font-medium text-slate-700">
+                  {{ form.chargeman_name.label }}
+                </label>
+                {{ form.chargeman_name }}
+                {% if form.chargeman_name.errors %}
+                  <p class="mt-1 text-xs text-rose-600">{{ form.chargeman_name.errors.0 }}</p>
+                {% endif %}
+              </div>
+            </div>
+            <div>
+              <label for="{{ form.st_pdf.id_for_label }}" class="block text-sm font-medium text-slate-700">
+                {{ form.st_pdf.label }}
+              </label>
+              {{ form.st_pdf }}
+              {% if has_pdf.st %}
+                <p class="mt-1 text-xs text-emerald-700">ST PDF already on file — upload again only for a new version.</p>
+              {% endif %}
+              {% if form.st_pdf.errors %}
+                <p class="mt-1 text-xs text-rose-600">{{ form.st_pdf.errors.0 }}</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+      {% elif step == 5 %}
+        <div class="grid gap-5 sm:grid-cols-2">
+          {% for field in form %}
+            <div>
+              <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-slate-700">
+                {{ field.label }}
+              </label>
+              {{ field }}
+              {% if field.errors %}<p class="mt-1 text-xs text-rose-600">{{ field.errors.0 }}</p>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+
+      {% elif step == 6 %}
+        <div class="space-y-6">
+          <div class="grid gap-5 sm:grid-cols-2">
+            <div>
+              <label for="{{ form.hse_representative_name.id_for_label }}" class="block text-sm font-medium text-slate-700">
+                {{ form.hse_representative_name.label }}
+              </label>
+              {{ form.hse_representative_name }}
+              {% if form.hse_representative_name.errors %}
+                <p class="mt-1 text-xs text-rose-600">{{ form.hse_representative_name.errors.0 }}</p>
+              {% endif %}
+            </div>
+            <div>
+              <label for="{{ form.public_liability_coverage.id_for_label }}" class="block text-sm font-medium text-slate-700">
+                {{ form.public_liability_coverage.label }}
+              </label>
+              {{ form.public_liability_coverage }}
+              {% if form.public_liability_coverage.errors %}
+                <p class="mt-1 text-xs text-rose-600">{{ form.public_liability_coverage.errors.0 }}</p>
+              {% endif %}
+            </div>
+          </div>
+
+          <section class="overflow-hidden rounded-2xl border border-slate-200">
+            <div class="border-b border-slate-200 bg-cream px-5 py-3">
+              <h3 class="text-sm font-semibold text-slate-900">Profile summary</h3>
+              <p class="text-xs text-slate-500">Review before you submit — you can go back to edit any step.</p>
+            </div>
+            <dl class="grid gap-0 divide-y divide-slate-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+              <div class="space-y-3 px-5 py-4">
+                <div>
+                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Company</dt>
+                  <dd class="mt-0.5 text-sm font-medium text-slate-900">{{ company.name }}</dd>
+                </div>
+                <div>
+                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Contact</dt>
+                  <dd class="mt-0.5 text-sm text-slate-800">
+                    {{ company.primary_contact_name }} · {{ company.contact_number }}
+                  </dd>
+                  <dd class="text-sm text-slate-600">{{ company.official_email }}</dd>
+                </div>
+                <div>
+                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">SSM</dt>
+                  <dd class="mt-0.5 text-sm text-slate-800">{{ company.ssm_registration_number|default:"—" }}</dd>
+                  {% if company.is_enterprise %}
+                    <dd class="text-xs text-slate-500">Enterprise · expiry {{ company.ssm_document_expiry|date:"d M Y"|default:"—" }}</dd>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="space-y-3 px-5 py-4">
+                <div>
+                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">CIDB</dt>
+                  <dd class="mt-0.5 text-sm text-slate-800">
+                    {{ company.cidb_registration_number|default:"—" }}
+                    · Grade {{ company.cidb_grade|default:"—" }}
+                  </dd>
+                  <dd class="text-xs text-slate-500">
+                    Categories: {% if company.cidb_categories %}{{ company.cidb_categories|join:", " }}{% else %}—{% endif %}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Electrical / ST</dt>
+                  <dd class="mt-0.5 text-sm text-slate-800">
+                    {% if company.includes_electrical_work %}
+                      Yes · {{ company.st_license_number|default:"—" }}
+                    {% elif company.includes_electrical_work == False %}
+                      No electrical scope
+                    {% else %}
+                      —
+                    {% endif %}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">LHDN / Banking</dt>
+                  <dd class="mt-0.5 text-sm text-slate-800">TIN {{ company.lhdn_tin|default:"—" }}</dd>
+                  <dd class="text-xs text-slate-500">MyInvois: {{ company.get_myinvois_readiness_display|default:"—" }}</dd>
+                </div>
+              </div>
+            </dl>
+          </section>
+
+          <section class="rounded-2xl border border-brand/20 bg-brand-50/40 px-5 py-4">
+            <div class="flex items-start justify-between gap-3">
+              <h3 class="text-sm font-semibold text-slate-900">Vendor declaration</h3>
+              <span class="shrink-0 rounded-full bg-white px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-brand ring-1 ring-brand/20">
+                {{ declaration_version }}
+              </span>
+            </div>
+            <p class="mt-3 text-sm leading-relaxed text-slate-700">{{ declaration_text }}</p>
+            <label class="mt-4 flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800">
+              {{ form.declaration_accepted }}
+              <span>{{ form.declaration_accepted.label }}</span>
+            </label>
+            {% if form.declaration_accepted.errors %}
+              <p class="mt-1 text-xs text-rose-600">{{ form.declaration_accepted.errors.0 }}</p>
+            {% endif %}
+          </section>
         </div>
       {% endif %}
 
-      <div class="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-between">
+      <div class="mt-8 flex flex-col-reverse gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
         {% if step > 1 %}
-          <a href="{% url 'vendors:wizard_step' company.pk step|add:'-1' %}"
-             class="inline-flex justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
-            Back
+          <a
+            href="{% url 'vendors:wizard_step' company.pk step|add:'-1' %}"
+            class="inline-flex items-center justify-center rounded-xl border border-transparent bg-peach px-5 py-2.5 text-sm font-semibold text-brand hover:bg-brand-100"
+          >
+            &lt; Back
           </a>
         {% else %}
-          <a href="{% url 'vendors:your_company' %}"
-             class="inline-flex justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
-            Cancel
-          </a>
+          <span
+            class="inline-flex cursor-not-allowed items-center justify-center rounded-xl bg-peach/50 px-5 py-2.5 text-sm font-semibold text-brand/40"
+            aria-disabled="true"
+          >
+            &lt; Back
+          </span>
         {% endif %}
-        <button type="submit" class="inline-flex justify-center rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700">
-          {% if step == 6 %}Submit registration{% else %}Save &amp; continue{% endif %}
+        <button
+          type="submit"
+          id="wizard-next"
+          class="inline-flex items-center justify-center rounded-xl bg-brand px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
+        >
+          {% if step == 6 %}Submit registration{% else %}Next &gt;{% endif %}
         </button>
       </div>
     </form>
   </div>
+
+  <script>
+    (function () {
+      var form = document.getElementById('wizard-form')
+      if (!form) return
+
+      var currentStep = {{ step }}
+      var gotoInput = document.getElementById('wizard-goto-step')
+      var dirty = false
+      var expiryIds = [
+        'id_ssm_document_expiry',
+        'id_cidb_certificate_expiry',
+        'id_st_certificate_expiry',
+      ]
+
+      form.addEventListener('input', function () { dirty = true })
+      form.addEventListener('change', function () { dirty = true })
+
+      function setRequired(el, on) {
+        if (!el) return
+        if (on) el.setAttribute('required', 'required')
+        else el.removeAttribute('required')
+      }
+
+      function fieldVisible(el) {
+        if (!el) return false
+        var wrap = el.closest('#ssm-expiry-wrap, #st-details-wrap')
+        if (wrap && wrap.classList.contains('hidden')) return false
+        return true
+      }
+
+      // Past dates pass HTML5 type=date; mirror Django clean() before leave/submit
+      function gateExpiryFields() {
+        var ok = true
+        var today = new Date()
+        var todayStr =
+          today.getFullYear() +
+          '-' +
+          String(today.getMonth() + 1).padStart(2, '0') +
+          '-' +
+          String(today.getDate()).padStart(2, '0')
+        expiryIds.forEach(function (id) {
+          var el = document.getElementById(id)
+          if (!el) return
+          el.setCustomValidity('')
+          if (!fieldVisible(el) || !el.value) return
+          if (el.value < todayStr) {
+            el.setCustomValidity('Document is already expired.')
+            ok = false
+          }
+        })
+        return ok
+      }
+
+      var enterprise = document.getElementById('id_is_enterprise')
+      var expiryWrap = document.getElementById('ssm-expiry-wrap')
+      var expiryInput = document.getElementById('id_ssm_document_expiry')
+      if (enterprise && expiryWrap) {
+        function syncExpiry() {
+          var on = enterprise.checked
+          expiryWrap.classList.toggle('hidden', !on)
+          setRequired(expiryInput, on)
+          if (!on && expiryInput) expiryInput.value = ''
+        }
+        enterprise.addEventListener('change', syncExpiry)
+        syncExpiry()
+      }
+
+      var stWrap = document.getElementById('st-details-wrap')
+      if (stWrap) {
+        var stPdfOptional = {{ has_pdf.st|yesno:"true,false" }}
+        var stFieldIds = [
+          'id_st_contractor_class',
+          'id_st_license_number',
+          'id_st_certificate_expiry',
+          'id_chargeman_name',
+          'id_st_pdf',
+        ]
+        function syncSt() {
+          var checked = document.querySelector('input[name="includes_electrical_work"]:checked')
+          var show = checked && (checked.value === 'True' || checked.value === 'true')
+          stWrap.classList.toggle('hidden', !show)
+          stFieldIds.forEach(function (id) {
+            var el = document.getElementById(id)
+            if (id === 'id_st_pdf' && stPdfOptional) {
+              setRequired(el, false)
+            } else {
+              setRequired(el, show)
+            }
+          })
+        }
+        document.querySelectorAll('input[name="includes_electrical_work"]').forEach(function (el) {
+          el.addEventListener('change', syncSt)
+          el.setAttribute('required', 'required')
+        })
+        syncSt()
+      }
+
+      function prepareSubmit() {
+        var catBoxes = form.querySelectorAll('input[name="cidb_categories_input"]')
+        if (catBoxes.length) {
+          var anyCat = false
+          catBoxes.forEach(function (box) {
+            if (box.checked) anyCat = true
+            box.setCustomValidity('')
+          })
+          if (!anyCat) {
+            catBoxes[0].setCustomValidity('Select at least one CIDB category.')
+          }
+        }
+        gateExpiryFields()
+        return form.checkValidity()
+      }
+
+      // Next / stepper save only when valid. Unchanged forms keep free step preview.
+      form.setAttribute('novalidate', 'novalidate')
+      form.addEventListener('submit', function (e) {
+        if (!prepareSubmit()) {
+          e.preventDefault()
+          form.reportValidity()
+          var firstInvalid = form.querySelector(':invalid')
+          if (firstInvalid && typeof firstInvalid.focus === 'function') {
+            firstInvalid.focus()
+          }
+          if (gotoInput) gotoInput.value = ''
+          return
+        }
+        // Plain Next clears any leftover goto target
+        if (e.submitter && e.submitter.id === 'wizard-next' && gotoInput) {
+          gotoInput.value = ''
+        }
+      })
+
+      document.querySelectorAll('.wizard-step-link').forEach(function (link) {
+        link.addEventListener('click', function (e) {
+          var target = parseInt(link.getAttribute('data-step'), 10)
+          if (!target || target === currentStep) {
+            e.preventDefault()
+            return
+          }
+          // Past expiry always blocks leave (even if the value was already saved)
+          if (!gateExpiryFields()) {
+            e.preventDefault()
+            form.reportValidity()
+            var badExpiry = form.querySelector(':invalid')
+            if (badExpiry && typeof badExpiry.focus === 'function') badExpiry.focus()
+            return
+          }
+          // Edits on this step: validate + save, then jump (server re-checks)
+          if (dirty) {
+            e.preventDefault()
+            if (!prepareSubmit()) {
+              form.reportValidity()
+              var bad = form.querySelector(':invalid')
+              if (bad && typeof bad.focus === 'function') bad.focus()
+              return
+            }
+            if (gotoInput) gotoInput.value = String(target)
+            if (typeof form.requestSubmit === 'function') form.requestSubmit()
+            else form.submit()
+          }
+          // Clean + valid expiry → free GET preview of other steps
+        })
+      })
+    })()
+  </script>
 {% endblock %}

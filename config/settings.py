@@ -48,12 +48,15 @@ INSTALLED_APPS = [
     "core",
     "accounts",
     "vendors",
+    "envelope1",
     "documents",
     "audit",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # DEBUG only: keep OAuth redirect_uri on localhost (not 127.0.0.1)
+    "accounts.middleware.PreferLocalhostMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -130,15 +133,23 @@ ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_LOGOUT_ON_GET = False
 ACCOUNT_SESSION_REMEMBER = True
 
-# Google OAuth — button shown only when both env vars are set
+# Social (Google): allow signup via OAuth; verified Google emails skip OTP
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_LOGIN_ON_GET = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
+SOCIALACCOUNT_QUERY_EMAIL = True
+
+# Google OAuth — set GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET in .env to enable
 GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID", default="")
 GOOGLE_CLIENT_SECRET = env("GOOGLE_CLIENT_SECRET", default="")
 
 SOCIALACCOUNT_PROVIDERS: dict = {
     "google": {
         "SCOPE": ["profile", "email"],
-        "AUTH_PARAMS": {"access_type": "online"},
+        "AUTH_PARAMS": {"access_type": "online", "prompt": "select_account"},
         "VERIFIED_EMAIL": True,
+        "FETCH_USERINFO": True,
     }
 }
 if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
@@ -157,7 +168,15 @@ EMAIL_BACKEND = env(
         else "django.core.mail.backends.smtp.EmailBackend"
     ),
 )
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@aosb-vms.local")
+# Display name shown in inboxes (From: "Alpha Orange VMS" <addr>)
+EMAIL_FROM_NAME = env("EMAIL_FROM_NAME", default="Alpha Orange VMS")
+_raw_from_email = env("DEFAULT_FROM_EMAIL", default="noreply@aosb-vms.local").strip()
+if "<" in _raw_from_email:
+    DEFAULT_FROM_EMAIL = _raw_from_email
+else:
+    # RFC 5322 display-name + address so clients show the brand, not only the mailbox
+    DEFAULT_FROM_EMAIL = f'"{EMAIL_FROM_NAME}" <{_raw_from_email}>'
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
 EMAIL_HOST = env("EMAIL_HOST", default="")
 EMAIL_PORT = env.int("EMAIL_PORT", default=587)
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")

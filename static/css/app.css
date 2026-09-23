@@ -8,3 +8,93 @@ body {
 .auth-input-icon {
   pointer-events: none;
 }
+
+/* Auth tab underline grows in on page load (full navigation) */
+@keyframes auth-tab-underline-in {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.auth-tab-underline-active {
+  transform-origin: center;
+  animation: auth-tab-underline-in 0.3s ease-out forwards;
+}
+
+/* Company registration wizard — panel enter + view transitions */
+@keyframes wizard-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.wizard-panel {
+  /* Instant paint — no enter animation / view-transition lag between steps */
+}
+
+.wizard-step-dot {
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease,
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+
+.wizard-step-link:hover .wizard-step-dot {
+  transform: scale(1.06);
+}
+
+/* Dashboard entrance + toast notifications */
+@keyframes dashboard-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dashboard-fade-in {
+  animation: dashboard-fade-in 0.5s ease-out both;
+}
+
+@keyframes app-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes app-toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+.app-toast {
+  animation: app-toast-in 0.35s ease-out both;
+}
+
+.app-toast-out {
+  animation: app-toast-out 0.28s ease-in forwards;
+}
+
+.app-toast-timer {
+  transform: scaleX(1);
+}
+

@@ -53,14 +53,38 @@ class VMSSocialAccountAdapter(DefaultSocialAccountAdapter):
     def is_open_for_signup(self, request, sociallogin) -> bool:  # type: ignore[no-untyped-def]
         return True
 
+    def pre_social_login(self, request, sociallogin) -> None:  # type: ignore[no-untyped-def]
+        """If an existing user already has this email, connect the Google account."""
+        if sociallogin.is_existing:
+            return
+        email = (sociallogin.account.extra_data or {}).get("email") or ""
+        email = (email or getattr(sociallogin.user, "email", "") or "").strip().lower()
+        if not email:
+            return
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        existing = User.objects.filter(email__iexact=email).first()
+        if existing is None:
+            return
+        sociallogin.connect(request, existing)
+
     def save_user(self, request, sociallogin, form=None):  # type: ignore[no-untyped-def]
         user = super().save_user(request, sociallogin, form=form)
+        from allauth.account.models import EmailAddress
         from accounts.models import VendorProfile
 
         VendorProfile.objects.get_or_create(
             user=user,
             defaults={"display_name": user.get_username() or user.email},
         )
+        # Google returns verified emails — mark so mandatory OTP is not required
+        if user.email:
+            EmailAddress.objects.update_or_create(
+                user=user,
+                email=user.email,
+                defaults={"verified": True, "primary": True},
+            )
         write_audit(
             category=AuditLog.Category.AUTH,
             action="vendor_registered_social",

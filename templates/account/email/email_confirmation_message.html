@@ -1,0 +1,54 @@
+{% extends "account/email/base_message.html" %}
+{% load account i18n %}
+
+{% block title %}{% trans "Confirm your email" %} · {{ current_site.name }}{% endblock %}
+
+{% block content %}
+  {% user_display user as user_display %}
+  <h1 style="margin:0 0 12px;font-size:20px;font-weight:700;color:#0f172a;">
+    {% trans "Confirm your email address" %}
+  </h1>
+  <p style="margin:0 0 16px;font-size:15px;line-height:1.55;color:#334155;">
+    {% blocktranslate with site_domain=current_site.domain %}You're receiving this email because user {{ user_display }} registered an account on {{ site_domain }}.{% endblocktranslate %}
+  </p>
+
+  {% if code %}
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.55;color:#334155;">
+      {% trans "Enter this verification code in your open browser window:" %}
+    </p>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 24px;">
+      <tr>
+        <td align="center" style="background-color:#FAF7F2;border:1px solid #FFE8D6;border-radius:12px;padding:20px;">
+          <p style="margin:0;font-size:28px;font-weight:700;letter-spacing:0.2em;color:#FF6F00;font-family:Consolas,Monaco,monospace;">
+            {{ code }}
+          </p>
+        </td>
+      </tr>
+    </table>
+    <p style="margin:0;font-size:12px;line-height:1.5;color:#64748b;">
+      {% trans "If you did not create this account, you can ignore this email." %}
+    </p>
+  {% else %}
+    <p style="margin:0 0 24px;font-size:15px;line-height:1.55;color:#334155;">
+      {% trans "Click the button below to confirm this email address:" %}
+    </p>
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 24px;">
+      <tr>
+        <td style="border-radius:12px;background-color:#FF6F00;">
+          <a
+            href="{{ activate_url }}"
+            style="display:inline-block;padding:12px 22px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;"
+          >
+            {% trans "Confirm email" %}
+          </a>
+        </td>
+      </tr>
+    </table>
+    <p style="margin:0 0 8px;font-size:12px;line-height:1.5;color:#64748b;">
+      {% trans "If the button does not work, copy and paste this link into your browser:" %}
+    </p>
+    <p style="margin:0;font-size:12px;line-height:1.5;word-break:break-all;">
+      <a href="{{ activate_url }}" style="color:#FF6F00;">{{ activate_url }}</a>
+    </p>
+  {% endif %}
+{% endblock %}

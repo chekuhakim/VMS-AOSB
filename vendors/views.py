@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.conf import settings
 from django.db import transaction
 from django.http import HttpRequest, HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from accounts.company_context import set_active_company_id
+from accounts.company_context import get_active_company_id, set_active_company_id
 from accounts.roles import is_vendor_user
 from audit.models import AuditLog
 from audit.services import client_ip, write_audit
@@ -24,16 +25,50 @@ from vendors.forms import (
     Step5LHDNForm,
     Step6HSEForm,
 )
+from vendors.sample_data import create_sample_company
 from vendors.models import Company, CompanyDocument
 from vendors.rules import REASON_LABELS, evaluate_company_registration
 
 STEP_META = {
-    1: {"title": "Company profile", "form": Step1ProfileForm},
-    2: {"title": "SSM E-info", "form": Step2SSMForm},
-    3: {"title": "CIDB registration", "form": Step3CIDBForm},
-    4: {"title": "ST licensing", "form": Step4STForm},
-    5: {"title": "LHDN & e-invoice", "form": Step5LHDNForm},
-    6: {"title": "HSE & declaration", "form": Step6HSEForm},
+    1: {
+        "title": "Company Profile Info",
+        "short": "Company Profile",
+        "hint": (
+            "Details must match your SSM records exactly — mismatches are the "
+            "top cause of pre-qualification rejection."
+        ),
+        "form": Step1ProfileForm,
+    },
+    2: {
+        "title": "SSM E-info",
+        "short": "SSM E-info",
+        "hint": "Upload your SSM statutory pack. Expiry is required only for enterprises.",
+        "form": Step2SSMForm,
+    },
+    3: {
+        "title": "CIDB Registration",
+        "short": "CIDB Registration",
+        "hint": "Provide your CIDB registration details and certificate PDF.",
+        "form": Step3CIDBForm,
+    },
+    4: {
+        "title": "ST Licensing",
+        "short": "ST Licensing",
+        "hint": "Only required when your tender scope includes electrical work.",
+        "form": Step4STForm,
+    },
+    5: {
+        "title": "LHDN & E-Invoice",
+        "short": "LHDN & E-Invoice",
+        "hint": "Tax and payment details used for purchase orders and e-invoicing.",
+        "form": Step5LHDNForm,
+    },
+    6: {
+        "title": "Declaration",
+        "short": "Declaration",
+        "hint": "Review your profile summary, then accept the declaration to submit.",
+        "form": Step6HSEForm,
+    },
 }
 
 
@@ -62,6 +97,40 @@ def your_company(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
+@require_http_methods(["POST"])
+def delete_company(request: HttpRequest, pk: int) -> HttpResponse:
+    """Delete an owned company after the vendor confirms in the UI."""
+    blocked = _vendor_gate(request)
+    if blocked:
+        return blocked
+
+    company = _owned_company(request, pk)
+    name = company.name
+    company_id = company.pk
+
+    with transaction.atomic():
+        write_audit(
+            category=AuditLog.Category.COMPANY,
+            action="company_deleted",
+            actor=request.user,
+            request=request,
+            changes={
+                "name": name,
+                "registration_status": company.registration_status,
+            },
+            object_type="Company",
+            object_id=company_id,
+        )
+        company.delete()
+
+    if get_active_company_id(request) == company_id:
+        set_active_company_id(request, None)
+
+    messages.success(request, f"“{name}” was deleted.")
+    return redirect("vendors:your_company")
+
+
+@login_required
 @require_http_methods(["GET", "POST"])
 def register_company(request: HttpRequest) -> HttpResponse:
     """Start a new draft company, then jump to step 1."""
@@ -70,6 +139,25 @@ def register_company(request: HttpRequest) -> HttpResponse:
         return blocked
 
     if request.method == "POST":
+        # DEBUG / local testing: one-click sample company with filled wizard fields
+        if request.POST.get("use_sample") == "1":
+            company = create_sample_company(owner=request.user)
+            set_active_company_id(request, company.pk)
+            write_audit(
+                category=AuditLog.Category.COMPANY,
+                action="company_sample_created",
+                actor=request.user,
+                request=request,
+                changes={"name": company.name, "sample": True},
+                object_type="Company",
+                object_id=company.pk,
+            )
+            messages.success(
+                request,
+                f"Sample company “{company.name}” loaded — review steps or go to declaration.",
+            )
+            return redirect("vendors:wizard_step", pk=company.pk, step=1)
+
         name = (request.POST.get("name") or "").strip()
         if not name:
             messages.error(request, "Enter a registered company name to start.")
@@ -99,7 +187,11 @@ def register_company(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "vendors/register_start.html",
-        {"page_title": "Register company"},
+        {
+            "page_title": "Register company",
+            "sample_enabled": settings.DEBUG,
+            "sample_name": "Cahaya Engineering Sdn Bhd",
+        },
     )
 
 
@@ -186,6 +278,12 @@ def wizard_step(request: HttpRequest, pk: int, step: int) -> HttpResponse:
                     object_id=company.pk,
                 )
 
+            # Stepper jump (goto_step) or Next → step+1 / final submit
+            raw_goto = (request.POST.get("goto_step") or "").strip()
+            if raw_goto.isdigit():
+                goto = int(raw_goto)
+                if goto in STEP_META and goto != step:
+                    return redirect("vendors:wizard_step", pk=company.pk, step=goto)
             if step < 6:
                 return redirect("vendors:wizard_step", pk=company.pk, step=step + 1)
             return _submit_registration(request, company)
@@ -201,8 +299,13 @@ def wizard_step(request: HttpRequest, pk: int, step: int) -> HttpResponse:
             "step": step,
             "steps": STEP_META,
             "form": form,
-            "has_pdf": has_pdf,
+            "has_pdf": {
+                "ssm": has_pdf[CompanyDocument.DocType.SSM],
+                "cidb": has_pdf[CompanyDocument.DocType.CIDB],
+                "st": has_pdf[CompanyDocument.DocType.ST],
+            },
             "declaration_text": DECLARATION_TEXT if step == 6 else "",
+            "declaration_version": DECLARATION_VERSION if step == 6 else "",
         },
     )
 

@@ -1,0 +1,41 @@
+{% load socialaccount %}
+<div class="mt-6">
+  <div class="mb-4 flex items-center gap-3 text-[11px] font-medium tracking-wide text-slate-400 uppercase">
+    <span class="h-px flex-1 bg-slate-200"></span>
+    Or
+    <span class="h-px flex-1 bg-slate-200"></span>
+  </div>
+
+  {% if google_oauth_enabled %}
+    <a
+      href="{% provider_login_url 'google' %}"
+      class="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
+    >
+      <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="#EA4335" d="M12 10.2v3.6h5.1c-.2 1.2-.9 2.3-1.9 3l3.1 2.4c1.8-1.7 2.9-4.1 2.9-7 0-.7-.1-1.3-.2-1.9H12z"/>
+        <path fill="#34A853" d="M5.3 14.3l-.8.6-2.5 1.9C3.6 19.5 7.5 22 12 22c2.7 0 5-.9 6.7-2.4l-3.1-2.4c-.9.6-2 .9-3.6.9-2.8 0-5.1-1.9-5.9-4.4z"/>
+        <path fill="#4A90E2" d="M2 7.2C1.4 8.4 1 9.7 1 11.1c0 1.4.4 2.7 1 3.9l4.3-3.3c-.2-.6-.3-1.2-.3-1.8 0-.6.1-1.2.3-1.8L2 7.2z"/>
+        <path fill="#FBBC05" d="M12 4.5c1.5 0 2.9.5 4 1.5l3-3C17 1.1 14.7 0 12 0 7.5 0 3.6 2.5 2 6.1l4.3 3.3C7 6.9 9.2 4.5 12 4.5z"/>
+      </svg>
+      {{ label|default:"Sign in with Google" }}
+    </a>
+  {% else %}
+    <button
+      type="button"
+      disabled
+      title="Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env, then restart the server"
+      class="flex w-full cursor-not-allowed items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-400 opacity-70 shadow-sm"
+    >
+      <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="#EA4335" d="M12 10.2v3.6h5.1c-.2 1.2-.9 2.3-1.9 3l3.1 2.4c1.8-1.7 2.9-4.1 2.9-7 0-.7-.1-1.3-.2-1.9H12z"/>
+        <path fill="#34A853" d="M5.3 14.3l-.8.6-2.5 1.9C3.6 19.5 7.5 22 12 22c2.7 0 5-.9 6.7-2.4l-3.1-2.4c-.9.6-2 .9-3.6.9-2.8 0-5.1-1.9-5.9-4.4z"/>
+        <path fill="#4A90E2" d="M2 7.2C1.4 8.4 1 9.7 1 11.1c0 1.4.4 2.7 1 3.9l4.3-3.3c-.2-.6-.3-1.2-.3-1.8 0-.6.1-1.2.3-1.8L2 7.2z"/>
+        <path fill="#FBBC05" d="M12 4.5c1.5 0 2.9.5 4 1.5l3-3C17 1.1 14.7 0 12 0 7.5 0 3.6 2.5 2 6.1l4.3 3.3C7 6.9 9.2 4.5 12 4.5z"/>
+      </svg>
+      {{ label|default:"Sign in with Google" }}
+    </button>
+    <p class="mt-2 text-center text-xs text-amber-700">
+      Google sign-in needs Client ID &amp; Secret in <code class="rounded bg-amber-50 px-1">.env</code>
+    </p>
+  {% endif %}
+</div>  

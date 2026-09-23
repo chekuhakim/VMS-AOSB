@@ -1,23 +1,25 @@
 {# Sign in / Sign up tab strip — pass active as "login" or "signup" #}
-<div class="mb-6 flex gap-8 border-b border-slate-200">
+<div class="mb-6 flex justify-center gap-10 border-b border-slate-200">
   <a
     href="{% url 'account_login' %}"
-    class="relative pb-3 text-sm font-semibold transition
+    class="group relative min-w-[5.5rem] px-1 pb-3 text-center text-sm font-semibold transition-colors duration-200
            {% if active == 'login' %}text-brand{% else %}text-slate-400 hover:text-slate-700{% endif %}"
   >
     Sign in
-    {% if active == 'login' %}
-      <span class="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-brand"></span>
-    {% endif %}
+    <span
+      class="absolute inset-x-0 -bottom-px h-0.5 origin-center rounded-full bg-brand transition-transform duration-300 ease-out
+             {% if active == 'login' %}auth-tab-underline-active{% else %}scale-x-0 group-hover:scale-x-50{% endif %}"
+    ></span>
   </a>
   <a
     href="{% url 'account_signup' %}"
-    class="relative pb-3 text-sm font-semibold transition
+    class="group relative min-w-[5.5rem] px-1 pb-3 text-center text-sm font-semibold transition-colors duration-200
            {% if active == 'signup' %}text-brand{% else %}text-slate-400 hover:text-slate-700{% endif %}"
   >
     Sign up
-    {% if active == 'signup' %}
-      <span class="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-brand"></span>
-    {% endif %}
+    <span
+      class="absolute inset-x-0 -bottom-px h-0.5 origin-center rounded-full bg-brand transition-transform duration-300 ease-out
+             {% if active == 'signup' %}auth-tab-underline-active{% else %}scale-x-0 group-hover:scale-x-50{% endif %}"
+    ></span>
   </a>
 </div>

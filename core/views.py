@@ -4,7 +4,16 @@ from __future__ import annotations
 
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
+
+from accounts.company_context import ensure_active_company
+from accounts.roles import is_vendor_user
+from core.dashboard import (
+    build_expiry_warnings,
+    build_progress_stages,
+    build_quick_actions,
+)
+from envelope1.services import latest_submission
 
 
 @login_required
@@ -12,25 +21,23 @@ def dashboard(request: HttpRequest) -> HttpResponse:
     """Vendor homepage at `/`."""
     from vendors.models import Company
 
-    company_count = (
-        Company.objects.filter(owner=request.user).count()
-        if request.user.is_authenticated
-        else 0
-    )
+    company = None
+    if is_vendor_user(request.user):
+        company = ensure_active_company(request)
+        if company is None:
+            company = (
+                Company.objects.filter(owner=request.user).order_by("-updated_at").first()
+            )
+
     return render(
         request,
         "core/dashboard.html",
         {
             "page_title": "Dashboard",
-            "stats": [
-                {
-                    "label": "Active companies",
-                    "value": str(company_count),
-                    "hint": "Your registered companies",
-                },
-                {"label": "Envelope 1 status", "value": "—", "hint": "Phase 3"},
-                {"label": "Open projects", "value": "—", "hint": "Phase 5"},
-            ],
+            "dashboard_company": company,
+            "progress_stages": build_progress_stages(company),
+            "quick_actions": build_quick_actions(company),
+            "expiry_warnings": build_expiry_warnings(company),
         },
     )
 
@@ -45,20 +52,12 @@ def _placeholder(request: HttpRequest, page_title: str, message: str) -> HttpRes
 
 @login_required
 def envelope1(request: HttpRequest) -> HttpResponse:
-    return _placeholder(
-        request,
-        "Envelope 1",
-        "Envelope 1 submission wizard arrives in Phase 3.",
-    )
+    return redirect("envelope1:home")
 
 
 @login_required
 def document_vault(request: HttpRequest) -> HttpResponse:
-    return _placeholder(
-        request,
-        "Document vault",
-        "All uploaded PDFs will be listed here in Phase 3.",
-    )
+    return redirect("envelope1:vault")
 
 
 @login_required

@@ -1,35 +1,157 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="mb-8">
-  <p class="text-sm text-slate-600">
-    ISO 9001-aligned vendor control for Malaysian Towerco operations.
-    {% if active_company %}
-      Active company:
-      <span class="font-medium text-slate-900">{{ active_company.name }}</span>
-      {% include "components/status_badge.html" with label=active_company.get_registration_status_display tone="info" %}
-    {% endif %}
-  </p>
-</section>
+  <div class="dashboard-shell space-y-8">
+    <header class="dashboard-fade-in flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">Dashboard</h1>
+        <p class="mt-1 text-sm text-slate-600">
+          {% if dashboard_company %}
+            Active company:
+            <span class="font-semibold text-slate-900">{{ dashboard_company.name }}</span>
+            · {{ dashboard_company.get_registration_status_display }}
+          {% else %}
+            Welcome — register a company to start onboarding.
+          {% endif %}
+        </p>
+      </div>
+    </header>
 
-<section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-  {% for stat in stats %}
-  <article class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-    <p class="text-sm font-medium text-slate-500">{{ stat.label }}</p>
-    <p class="mt-2 text-3xl font-semibold tracking-tight text-slate-950">{{ stat.value }}</p>
-    <p class="mt-2 text-xs text-slate-400">{{ stat.hint }}</p>
-  </article>
-  {% endfor %}
-</section>
+    {# Progress stages #}
+    <section aria-label="Onboarding progress">
+      <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {% for stage in progress_stages %}
+          {% if stage.locked or not stage.href %}
+            <article
+              class="dashboard-stage dashboard-fade-in rounded-2xl border border-slate-200/80 bg-white/90 p-4 shadow-sm backdrop-blur-sm
+                     {% if stage.locked %}opacity-80{% endif %}"
+              style="animation-delay: {{ forloop.counter0 }}00ms"
+            >
+          {% else %}
+            <a
+              href="{{ stage.href }}"
+              class="dashboard-stage dashboard-fade-in block rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition
+                     hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-md"
+              style="animation-delay: {{ forloop.counter0 }}00ms"
+            >
+          {% endif %}
 
-<section class="mt-8 rounded-xl border border-dashed border-slate-200 bg-white p-6 shadow-sm">
-  <h2 class="text-sm font-semibold text-slate-950">Phase 2 — company registration</h2>
-  <p class="mt-2 text-sm text-slate-600">
-    Register at
-    <a href="{% url 'vendors:register_company' %}" class="font-medium text-brand hover:text-brand-700">/register-company/</a>
-    · manage under
-    <a href="{% url 'vendors:your_company' %}" class="font-medium text-brand hover:text-brand-700">Your company</a>.
-    Next up: Phase 3 — Envelope 1.
-  </p>
-</section>
+            <div class="flex items-start justify-between gap-2">
+              <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Stage {{ stage.number }}
+              </p>
+              <span
+                class="inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold
+                  {% if stage.tone == 'completed' %}bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/15
+                  {% elif stage.tone == 'progress' %}bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-600/15
+                  {% elif stage.tone == 'action' %}bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-600/20
+                  {% else %}bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/15
+                  {% endif %}"
+              >
+                {{ stage.status_label }}
+              </span>
+            </div>
+            <h2 class="mt-3 text-sm font-semibold text-slate-900">{{ stage.title }}</h2>
+            <p class="mt-1.5 text-xs leading-relaxed text-slate-500">{{ stage.description }}</p>
+
+          {% if stage.locked or not stage.href %}
+            </article>
+          {% else %}
+            </a>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </section>
+
+    {# Quick actions + expiry #}
+    <section class="grid gap-5 lg:grid-cols-5">
+      <div
+        class="dashboard-fade-in rounded-2xl border border-sky-200/80 bg-gradient-to-br from-white to-sky-50/40 p-5 shadow-sm lg:col-span-3"
+        style="animation-delay: 280ms"
+      >
+        <h2 class="text-base font-semibold text-slate-900">Quick actions</h2>
+        <p class="mt-1 text-xs text-slate-500">Jump to the next useful task for this account.</p>
+        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+          {% for action in quick_actions %}
+            <a
+              href="{{ action.href }}"
+              class="group flex items-start gap-3 rounded-xl border border-slate-200/90 bg-white px-3.5 py-3 shadow-sm transition
+                     hover:border-brand/35 hover:shadow-md"
+            >
+              <span
+                class="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand ring-1 ring-brand/15
+                       transition group-hover:bg-brand group-hover:text-white"
+              >
+                {% if action.icon == 'plus' %}
+                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                {% elif action.icon == 'envelope' %}
+                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>
+                {% elif action.icon == 'vault' %}
+                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"/></svg>
+                {% else %}
+                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12v6.75H3V3z"/></svg>
+                {% endif %}
+              </span>
+              <span class="min-w-0">
+                <span class="block text-sm font-semibold text-slate-900 group-hover:text-brand">{{ action.title }}</span>
+                <span class="mt-0.5 block text-xs text-slate-500">{{ action.hint }}</span>
+              </span>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div
+        class="dashboard-fade-in rounded-2xl border border-slate-200/80 bg-white/95 p-5 shadow-sm lg:col-span-2"
+        style="animation-delay: 360ms"
+      >
+        <h2 class="text-base font-semibold text-slate-900">Expiry warnings</h2>
+        <p class="mt-1 text-xs text-slate-500">
+          Based on the active company’s uploaded certificates.
+        </p>
+
+        {% if expiry_warnings %}
+          <ul class="mt-4 divide-y divide-slate-100">
+            {% for item in expiry_warnings %}
+              <li class="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-slate-900">{{ item.label }}</p>
+                  <p class="text-xs text-slate-500">{{ item.detail }}</p>
+                </div>
+                <span
+                  class="inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide
+                    {% if item.tone == 'expired' %}bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/15
+                    {% elif item.tone == 'soon' %}bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-600/15
+                    {% else %}bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/15
+                    {% endif %}"
+                >
+                  {{ item.status_label }}
+                </span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="mt-4 rounded-xl border border-dashed border-slate-200 bg-cream/50 px-4 py-6 text-center">
+            <p class="text-sm text-slate-600">
+              {% if dashboard_company %}
+                No certificate expiry dates on file yet.
+              {% else %}
+                Register a company to track document expiry here.
+              {% endif %}
+            </p>
+          </div>
+        {% endif %}
+
+        <a
+          href="{% url 'envelope1:vault' %}"
+          class="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-brand hover:text-brand-700"
+        >
+          Open document vault
+          <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"/>
+          </svg>
+        </a>
+      </div>
+    </section>
+  </div>
 {% endblock %}

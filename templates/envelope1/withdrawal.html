@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="mx-auto max-w-lg">
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900">Withdrawal request</h1>
+    <p class="mt-2 text-sm text-slate-600">
+      Envelope 1 for
+      <span class="font-semibold">{{ company.name }}</span>
+      is locked while procurement evaluates. Request withdrawal to unlock edits.
+    </p>
+
+    <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      {% if pending %}
+        <p class="text-sm text-amber-800">
+          A withdrawal request is already pending (submitted {{ pending.created_at|date:"d M Y H:i" }}).
+          Staff review arrives in Phase 4.
+        </p>
+        <a href="{% url 'envelope1:home' %}" class="mt-4 inline-flex font-medium text-brand hover:text-brand-700">Back to Envelope 1</a>
+      {% else %}
+        <form method="post" class="space-y-4">
+          {% csrf_token %}
+          <div>
+            <label for="{{ form.reason.id_for_label }}" class="block text-sm font-medium text-slate-700">{{ form.reason.label }}</label>
+            {{ form.reason }}
+            {% if form.reason.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.reason.errors.0 }}</p>{% endif %}
+          </div>
+          <button type="submit" class="w-full rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700">
+            Submit withdrawal request
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

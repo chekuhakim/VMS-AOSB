@@ -1,0 +1,94 @@
+{# Visily-style registration stepper — expects steps, step, company #}
+{# Step icons preview freely when the current form is unchanged. #}
+{# Changing fields (e.g. expiry) requires validation before leaving — same as Next. #}
+{% with progress=step|add:"-1" %}
+<nav class="wizard-stepper mb-8" aria-label="Registration progress">
+  <div
+    class="relative mx-auto max-w-4xl overflow-hidden rounded-2xl border border-brand/15 bg-gradient-to-b from-white via-cream to-peach/70 px-3 py-5 shadow-sm sm:px-5 sm:py-6"
+  >
+    {# Soft brand wash so the track reads against the page gradient #}
+    <div
+      class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(255,111,0,0.08),_transparent_55%)]"
+      aria-hidden="true"
+    ></div>
+
+    <div class="relative mx-auto max-w-3xl">
+      {# Track behind dots #}
+      <div
+        class="pointer-events-none absolute left-[8.333%] right-[8.333%] top-5 h-0.5 -translate-y-1/2 rounded-full bg-white/80 ring-1 ring-brand/10 sm:top-6"
+        aria-hidden="true"
+      >
+        <span
+          class="absolute inset-y-0 left-0 rounded-full bg-brand transition-[width] duration-500 ease-out"
+          style="width: {% widthratio progress 5 100 %}%"
+        ></span>
+      </div>
+
+      <ol class="relative z-10 grid grid-cols-6 gap-1">
+        {% for num, meta in steps.items %}
+          <li class="flex flex-col items-center text-center">
+            <a
+              href="{% url 'vendors:wizard_step' company.pk num %}"
+              class="wizard-step-link group flex flex-col items-center focus:outline-none"
+              data-step="{{ num }}"
+              {% if num == step %}aria-current="step"{% endif %}
+              title="Go to {{ meta.short }}"
+            >
+              <span
+                class="wizard-step-dot flex h-10 w-10 items-center justify-center rounded-full sm:h-12 sm:w-12
+                       {% if num == step %}
+                         bg-brand text-white shadow-md shadow-brand/25 ring-4 ring-brand/15
+                       {% elif num < step %}
+                         bg-brand-100 text-brand ring-1 ring-brand/25
+                       {% else %}
+                         bg-white text-brand/50 ring-1 ring-brand/15 group-hover:bg-brand-50 group-hover:text-brand
+                       {% endif %}"
+              >
+                {% if num < step %}
+                  <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </svg>
+                {% elif num == 1 %}
+                  <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12v6.75H3V3z" />
+                  </svg>
+                {% elif num == 2 %}
+                  <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                  </svg>
+                {% elif num == 3 %}
+                  <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                {% elif num == 4 %}
+                  <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                  </svg>
+                {% elif num == 5 %}
+                  <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+                  </svg>
+                {% else %}
+                  <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                  </svg>
+                {% endif %}
+              </span>
+
+              <span
+                class="mt-2.5 hidden max-w-[7rem] text-[11px] font-medium leading-snug sm:block
+                       {% if num == step %}text-brand{% else %}text-slate-500 group-hover:text-slate-700{% endif %}"
+              >
+                <span class="mb-0.5 block text-[9px] font-normal uppercase tracking-wider text-slate-400">
+                  Step {{ num }}
+                </span>
+                {{ meta.short }}
+              </span>
+            </a>
+          </li>
+        {% endfor %}
+      </ol>
+    </div>
+  </div>
+</nav>
+{% endwith %}

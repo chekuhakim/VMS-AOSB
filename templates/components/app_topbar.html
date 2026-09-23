@@ -1,0 +1,288 @@
+{% load static %}
+{# Shared Alpha Orange top chrome — every vendor-facing page #}
+<header class="sticky top-0 z-40 border-b border-slate-200/80 bg-cream/95 backdrop-blur">
+  <div class="flex h-16 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+    <div class="flex min-w-0 items-center gap-2 sm:gap-3">
+      <button
+        type="button"
+        id="app-nav-open"
+        class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-700 transition hover:bg-brand-50 hover:text-brand"
+        aria-label="Open menu"
+        aria-expanded="false"
+        aria-controls="app-nav-drawer"
+      >
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+        </svg>
+      </button>
+
+      <a href="{% if user.is_authenticated %}{% url 'core:dashboard' %}{% else %}{% url 'account_login' %}{% endif %}" class="shrink-0">
+        <img src="{% static 'brand/logo.webp' %}" alt="{{ brand.name }}" class="h-9 w-auto sm:h-10" />
+      </a>
+
+      <p class="hidden min-w-0 truncate text-sm text-slate-700 sm:block sm:text-base">
+        <span class="font-semibold text-slate-900">{{ brand.tagline }}</span>
+        <span class="text-slate-400">|</span>
+        <span class="font-light text-slate-500">{{ brand.legal_name }}</span>
+      </p>
+    </div>
+
+    <div class="flex shrink-0 items-center gap-2 sm:gap-3">
+      {% if is_vendor_user and vendor_companies %}
+        <form method="post" action="{% url 'accounts:switch_company' %}" class="hidden items-center sm:flex">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.path }}" />
+          <label for="active-company" class="sr-only">Active company</label>
+          <select
+            id="active-company"
+            name="company_id"
+            onchange="this.form.submit()"
+            class="max-w-[10rem] rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand sm:max-w-[14rem] sm:text-sm"
+          >
+            {% for company in vendor_companies %}
+              <option value="{{ company.pk }}" {% if active_company and active_company.pk == company.pk %}selected{% endif %}>
+                {{ company.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </form>
+      {% endif %}
+
+      {% if user.is_authenticated %}
+        <div class="relative" id="notif-root">
+          <button
+            type="button"
+            id="notif-bell"
+            class="relative inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-700 transition hover:bg-brand-50 hover:text-brand"
+            aria-label="Notifications"
+            aria-expanded="false"
+            aria-controls="notif-panel"
+          >
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>
+            </svg>
+            {% if unread_notification_count %}
+              <span class="absolute right-1.5 top-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-white">
+                {{ unread_notification_count }}
+              </span>
+            {% endif %}
+          </button>
+
+          <div
+            id="notif-panel"
+            class="invisible absolute right-0 z-50 mt-2 w-[min(100vw-2rem,22rem)] origin-top-right scale-95 rounded-2xl border border-slate-200 bg-white opacity-0 shadow-xl transition duration-200"
+            role="dialog"
+            aria-label="Notification inbox"
+            hidden
+          >
+            <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+              <p class="text-sm font-semibold text-slate-900">Notifications</p>
+              {% if unread_notification_count %}
+                <form method="post" action="{% url 'accounts:notifications_mark_all_read' %}" class="inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="next" value="{{ request.path }}" />
+                  <button type="submit" class="text-xs font-medium text-brand hover:text-brand-700">Mark all read</button>
+                </form>
+              {% endif %}
+            </div>
+            <ul class="max-h-80 overflow-y-auto py-1">
+              {% for note in user_notifications %}
+                <li class="group flex items-start gap-1 {% if note.is_unread %}bg-brand-50/40{% endif %}">
+                  <form method="post" action="{% url 'accounts:notification_read' note.pk %}" class="min-w-0 flex-1">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ note.link_url|default:request.path }}" />
+                    <button type="submit" class="flex w-full flex-col gap-0.5 px-4 py-3 text-left hover:bg-cream">
+                      <span class="text-sm font-medium text-slate-900">{{ note.title }}</span>
+                      {% if note.body %}
+                        <span class="line-clamp-2 text-xs text-slate-500">{{ note.body }}</span>
+                      {% endif %}
+                      <span class="mt-1 text-[10px] uppercase tracking-wide text-slate-400">{{ note.created_at|timesince }} ago</span>
+                    </button>
+                  </form>
+                  <form
+                    method="post"
+                    action="{% url 'accounts:notification_delete' note.pk %}"
+                    class="shrink-0 pr-2 pt-2"
+                  >
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.path }}" />
+                    <button
+                      type="submit"
+                      class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                      aria-label="Remove notification"
+                      title="Remove"
+                    >
+                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </form>
+                </li>
+              {% empty %}
+                <li class="px-4 py-8 text-center text-sm text-slate-500">No notifications yet.</li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      {% endif %}
+
+      <a
+        href="#faq"
+        class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-brand-50 px-3 py-2 text-sm font-medium text-brand ring-1 ring-inset ring-brand/20 transition hover:bg-brand-100 sm:px-4"
+      >
+        FAQ
+        <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path
+            fill-rule="evenodd"
+            d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
+            clip-rule="evenodd"
+          />
+        </svg>
+      </a>
+    </div>
+  </div>
+</header>
+
+{# Slide-over menu #}
+<div id="app-nav-drawer" class="pointer-events-none fixed inset-0 z-50" aria-hidden="true">
+  <div
+    id="app-nav-backdrop"
+    class="absolute inset-0 bg-slate-900/30 opacity-0 transition-opacity duration-300"
+  ></div>
+  <aside
+    id="app-nav-panel"
+    class="absolute inset-y-0 left-0 flex w-[min(100%,18rem)] -translate-x-full flex-col bg-cream shadow-xl transition-transform duration-300 ease-out"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Main menu"
+  >
+    <div class="flex h-16 items-center justify-between border-b border-slate-200 px-4">
+      <p class="text-sm font-semibold text-slate-900">Menu</p>
+      <button
+        type="button"
+        id="app-nav-close"
+        class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-brand-50 hover:text-brand"
+        aria-label="Close menu"
+      >
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    {% if is_vendor_user and vendor_companies %}
+      <div class="border-b border-slate-200 px-4 py-3 sm:hidden">
+        <form method="post" action="{% url 'accounts:switch_company' %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.path }}" />
+          <label for="active-company-mobile" class="mb-1 block text-xs font-medium text-slate-500">Active company</label>
+          <select
+            id="active-company-mobile"
+            name="company_id"
+            onchange="this.form.submit()"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+          >
+            {% for company in vendor_companies %}
+              <option value="{{ company.pk }}" {% if active_company and active_company.pk == company.pk %}selected{% endif %}>
+                {{ company.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </form>
+      </div>
+    {% endif %}
+
+    <nav class="flex flex-1 flex-col gap-1 p-3 text-sm font-medium text-slate-700">
+      {% if user.is_authenticated %}
+        {% for item in nav_items %}
+          {% url item.url_name as item_url %}
+          <a
+            href="{{ item_url }}"
+            class="rounded-xl px-3 py-2.5 transition
+                   {% if request.path == item_url %}bg-brand-50 text-brand{% else %}hover:bg-brand-50 hover:text-brand{% endif %}"
+          >
+            {{ item.label }}
+          </a>
+        {% endfor %}
+        <a href="{% url 'account_logout' %}" class="mt-auto rounded-xl px-3 py-2.5 text-rose-700 hover:bg-rose-50">Sign out</a>
+      {% else %}
+        <a href="{% url 'account_login' %}" class="rounded-xl px-3 py-2.5 hover:bg-brand-50 hover:text-brand">Sign in</a>
+        <a href="{% url 'account_signup' %}" class="rounded-xl px-3 py-2.5 hover:bg-brand-50 hover:text-brand">Sign up</a>
+      {% endif %}
+    </nav>
+  </aside>
+</div>
+
+<script>
+  (function () {
+    var drawer = document.getElementById('app-nav-drawer')
+    var panel = document.getElementById('app-nav-panel')
+    var backdrop = document.getElementById('app-nav-backdrop')
+    var openBtn = document.getElementById('app-nav-open')
+    var closeBtn = document.getElementById('app-nav-close')
+    if (!drawer || !panel || !openBtn) return
+
+    function openNav() {
+      drawer.classList.remove('pointer-events-none')
+      drawer.setAttribute('aria-hidden', 'false')
+      openBtn.setAttribute('aria-expanded', 'true')
+      requestAnimationFrame(function () {
+        backdrop.classList.add('opacity-100')
+        panel.classList.remove('-translate-x-full')
+      })
+      document.documentElement.classList.add('overflow-hidden')
+    }
+
+    function closeNav() {
+      backdrop.classList.remove('opacity-100')
+      panel.classList.add('-translate-x-full')
+      openBtn.setAttribute('aria-expanded', 'false')
+      drawer.setAttribute('aria-hidden', 'true')
+      setTimeout(function () {
+        drawer.classList.add('pointer-events-none')
+      }, 300)
+      document.documentElement.classList.remove('overflow-hidden')
+    }
+
+    openBtn.addEventListener('click', openNav)
+    closeBtn && closeBtn.addEventListener('click', closeNav)
+    backdrop && backdrop.addEventListener('click', closeNav)
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeNav()
+    })
+
+    // Notification inbox
+    var notifRoot = document.getElementById('notif-root')
+    var notifBell = document.getElementById('notif-bell')
+    var notifPanel = document.getElementById('notif-panel')
+    if (notifBell && notifPanel) {
+      function openNotif() {
+        notifPanel.hidden = false
+        notifBell.setAttribute('aria-expanded', 'true')
+        requestAnimationFrame(function () {
+          notifPanel.classList.remove('invisible', 'opacity-0', 'scale-95')
+          notifPanel.classList.add('opacity-100', 'scale-100')
+        })
+      }
+      function closeNotif() {
+        notifBell.setAttribute('aria-expanded', 'false')
+        notifPanel.classList.add('invisible', 'opacity-0', 'scale-95')
+        notifPanel.classList.remove('opacity-100', 'scale-100')
+        setTimeout(function () {
+          notifPanel.hidden = true
+        }, 200)
+      }
+      notifBell.addEventListener('click', function (e) {
+        e.stopPropagation()
+        if (notifBell.getAttribute('aria-expanded') === 'true') closeNotif()
+        else openNotif()
+      })
+      document.addEventListener('click', function (e) {
+        if (!notifRoot.contains(e.target)) closeNotif()
+      })
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeNotif()
+      })
+    }
+  })()
+</script>

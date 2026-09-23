@@ -1,0 +1,4 @@
+{% load i18n %}
+{% autoescape off %}
+{% blocktrans %}Confirm your email — Alpha Orange VMS{% endblocktrans %}
+{% endautoescape %}

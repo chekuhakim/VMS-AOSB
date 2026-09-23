@@ -67,6 +67,23 @@ def upload_bytes(
     )
 
 
+def open_stored(*, path: str, backend: str) -> bytes:
+    """Read stored PDF bytes (local MEDIA or Supabase)."""
+    if backend == "supabase":
+        return _download_supabase(path=path)
+    with default_storage.open(path, "rb") as handle:
+        return handle.read()
+
+
+def _download_supabase(*, path: str) -> bytes:
+    from supabase import create_client
+
+    client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
+    bucket = settings.SUPABASE_STORAGE_BUCKET
+    data = client.storage.from_(bucket).download(path)
+    return bytes(data)
+
+
 def _upload_supabase(*, path: str, data: bytes, content_type: str) -> StoredObject:
     """Upload to the configured Supabase Storage bucket via the official client."""
     from supabase import create_client

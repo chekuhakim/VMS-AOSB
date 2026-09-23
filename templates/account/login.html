@@ -3,22 +3,18 @@
 
 {% block head_title %}Sign in{% endblock %}
 
-{% block auth_body %}
-<div class="flex min-h-full flex-col">
-  {% include "account/components/auth_topbar.html" %}
-
-  <div class="flex min-h-0 flex-1 flex-col lg:flex-row">
-    {# Hero — only the image is rounded (no slate fill in the corner) #}
+{# Hero login layout — keeps shared topbar from base.html #}
+{% block main %}
+  <div class="flex min-h-0 flex-1 flex-col bg-gradient-to-b from-peach to-brand-50 lg:flex-row">
     <div class="relative hidden min-h-[280px] flex-1 lg:block">
       <img
         src="{% static 'brand/hero banner.webp' %}"
         alt=""
         class="absolute inset-0 h-full w-full rounded-tr-[2.5rem] object-cover"
-      >
+      />
     </div>
 
-    {# Form panel #}
-    <div class="flex w-full flex-col bg-gradient-to-b from-peach to-brand-50 lg:w-[min(100%,28rem)] xl:w-[32rem]">
+    <div class="flex w-full flex-col lg:w-[min(100%,28rem)] xl:w-[32rem]">
       <div class="flex flex-1 flex-col justify-center px-6 py-10 sm:px-10">
         {% if messages %}
           <div class="mb-4 space-y-2">
@@ -34,7 +30,7 @@
           <form method="post" action="{% url 'account_login' %}" class="space-y-4">
             {% csrf_token %}
             {% if redirect_field_value %}
-              <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">
+              <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
             {% endif %}
 
             {% if form.non_field_errors %}
@@ -58,7 +54,7 @@
                   autocomplete="email"
                   placeholder="Enter your company email"
                   class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm shadow-sm placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-                >
+                />
               </div>
               {% if form.login.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.login.errors.0 }}</p>{% endif %}
             </div>
@@ -77,18 +73,15 @@
                   autocomplete="current-password"
                   placeholder="Enter your password"
                   class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-sm shadow-sm placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-                >
-                <button type="button" data-toggle-password="id_password" aria-label="Show password"
-                  class="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600">
-                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                </button>
+                />
+                {% include "account/components/auth_password_toggle.html" with input_id="id_password" %}
               </div>
               {% if form.password.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.password.errors.0 }}</p>{% endif %}
             </div>
 
             <div class="flex items-center justify-between text-sm">
               <label class="flex items-center gap-2 text-slate-600">
-                <input type="checkbox" name="remember" class="rounded border-slate-300 text-brand focus:ring-brand">
+                <input type="checkbox" name="remember" class="rounded border-slate-300 text-brand focus:ring-brand" />
                 Remember me
               </label>
               <a href="{% url 'account_reset_password' %}" class="font-medium text-brand hover:text-brand-700">Forgot password?</a>
@@ -99,24 +92,10 @@
             </button>
           </form>
 
-          {% if google_oauth_enabled %}
-            <div class="my-6 flex items-center gap-3 text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              <span class="h-px flex-1 bg-slate-200"></span>
-              Or sign up with
-              <span class="h-px flex-1 bg-slate-200"></span>
-            </div>
-            <a
-              href="{% provider_login_url 'google' %}"
-              class="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50"
-            >
-              <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true"><path fill="#EA4335" d="M12 10.2v3.6h5.1c-.2 1.2-.9 2.3-1.9 3l3.1 2.4c1.8-1.7 2.9-4.1 2.9-7 0-.7-.1-1.3-.2-1.9H12z"/><path fill="#34A853" d="M5.3 14.3l-.8.6-2.5 1.9C3.6 19.5 7.5 22 12 22c2.7 0 5-.9 6.7-2.4l-3.1-2.4c-.9.6-2 .9-3.6.9-2.8 0-5.1-1.9-5.9-4.4z"/><path fill="#4A90E2" d="M2 7.2C1.4 8.4 1 9.7 1 11.1c0 1.4.4 2.7 1 3.9l4.3-3.3c-.2-.6-.3-1.2-.3-1.8 0-.6.1-1.2.3-1.8L2 7.2z"/><path fill="#FBBC05" d="M12 4.5c1.5 0 2.9.5 4 1.5l3-3C17 1.1 14.7 0 12 0 7.5 0 3.6 2.5 2 6.1l4.3 3.3C7 6.9 9.2 4.5 12 4.5z"/></svg>
-              Google
-            </a>
-          {% endif %}
+          {% include "account/components/auth_google_button.html" with label="Sign in with Google" %}
         </div>
       </div>
-      {% include "account/components/auth_footer.html" %}
+      {% include "components/app_footer.html" %}
     </div>
   </div>
-</div>
 {% endblock %}

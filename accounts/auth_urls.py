@@ -40,5 +40,7 @@ urlpatterns = [
         allauth_views.password_reset_from_key_done,
         name="account_reset_password_from_key_done",
     ),
+    # Socialaccount base + per-provider OAuth routes (google_login, google_callback, …)
     path("accounts/", include("allauth.socialaccount.urls")),
+    path("accounts/", include("allauth.socialaccount.providers.google.urls")),
 ]

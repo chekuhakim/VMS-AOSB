@@ -1,0 +1,15 @@
+{% load account i18n %}{% autoescape off %}{% user_display user as user_display %}{% blocktranslate with site_name=current_site.name site_domain=current_site.domain %}Hello from {{ site_name }}!
+
+You're receiving this email because user {{ user_display }} registered an account on {{ site_domain }}.{% endblocktranslate %}
+
+{% if code %}{% blocktranslate %}Your email verification code is:{% endblocktranslate %}
+
+{{ code }}
+
+{% blocktranslate %}Enter it in your open browser window to confirm your email address.{% endblocktranslate %}{% else %}{% blocktranslate %}To confirm this is correct, open this link:{% endblocktranslate %}
+
+{{ activate_url }}{% endif %}
+
+{% blocktrans with site_name=current_site.name site_domain=current_site.domain %}Thank you for using {{ site_name }}!
+{{ site_domain }}{% endblocktrans %}
+{% endautoescape %}

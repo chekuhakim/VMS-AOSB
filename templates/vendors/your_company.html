@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 
+{% block extra_head %}
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+{% endblock %}
+
 {% block content %}
   <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <p class="text-sm text-slate-600">Companies registered under your vendor account.</p>
@@ -36,13 +40,29 @@
                 {% endif %}
               </td>
               <td class="px-4 py-3 text-slate-500">{{ company.updated_at|date:"d M Y H:i" }}</td>
-              <td class="space-x-2 px-4 py-3 text-right">
-                <a href="{% url 'vendors:company_detail' company.pk %}" class="font-medium text-brand hover:text-brand-700">View</a>
-                {% if company.registration_status == "draft" %}
-                  <a href="{% url 'vendors:wizard_step' company.pk company.wizard_step %}" class="font-medium text-slate-600 hover:text-brand">Continue</a>
-                {% else %}
-                  <a href="{% url 'vendors:wizard_step' company.pk 1 %}" class="font-medium text-slate-600 hover:text-brand">Edit</a>
-                {% endif %}
+              <td class="px-4 py-3">
+                <div class="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+                  <a href="{% url 'vendors:company_detail' company.pk %}" class="font-medium text-brand hover:text-brand-700">View</a>
+                  {% if company.registration_status == "draft" %}
+                    <a href="{% url 'vendors:wizard_step' company.pk company.wizard_step %}" class="font-medium text-slate-600 hover:text-brand">Continue</a>
+                  {% else %}
+                    <a href="{% url 'vendors:wizard_step' company.pk 1 %}" class="font-medium text-slate-600 hover:text-brand">Edit</a>
+                  {% endif %}
+                  <form
+                    method="post"
+                    action="{% url 'vendors:delete_company' company.pk %}"
+                    class="js-delete-company-form inline"
+                    data-company-name="{{ company.name }}"
+                  >
+                    {% csrf_token %}
+                    <button
+                      type="submit"
+                      class="font-medium text-rose-600 hover:text-rose-800"
+                    >
+                      Delete
+                    </button>
+                  </form>
+                </div>
               </td>
             </tr>
           {% endfor %}
@@ -57,4 +77,44 @@
       </a>
     </div>
   {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+  <script>
+    (function () {
+      document.querySelectorAll('.js-delete-company-form').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+          e.preventDefault()
+          var name = form.getAttribute('data-company-name') || 'this company'
+          Swal.fire({
+            title: 'Delete company?',
+            html:
+              'You are about to permanently delete <strong>' +
+              name.replace(/</g, '&lt;').replace(/>/g, '&gt;') +
+              '</strong>.<br><br>' +
+              'This removes the company, its registration documents, and any Envelope&nbsp;1 cycles. ' +
+              '<span class="text-rose-600 font-medium">This cannot be undone.</span>',
+            icon: 'warning',
+            showCancelButton: true,
+            focusCancel: true,
+            confirmButtonText: 'Yes, delete',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true,
+            buttonsStyling: false,
+            customClass: {
+              popup: 'rounded-2xl',
+              confirmButton:
+                'ml-2 inline-flex items-center justify-center rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-700',
+              cancelButton:
+                'inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50',
+            },
+          }).then(function (result) {
+            if (result.isConfirmed) {
+              form.submit()
+            }
+          })
+        })
+      })
+    })()
+  </script>
 {% endblock %}

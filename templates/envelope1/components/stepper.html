@@ -1,0 +1,41 @@
+{# Envelope 1 stepper — expects steps, step, submission #}
+{% with progress=step|add:"-1" %}
+<nav class="mb-8" aria-label="Envelope 1 progress">
+  <div class="relative mx-auto max-w-4xl overflow-hidden rounded-2xl border border-brand/15 bg-gradient-to-b from-white via-cream to-peach/70 px-3 py-5 shadow-sm sm:px-5 sm:py-6">
+    <div class="relative mx-auto max-w-3xl">
+      <div
+        class="pointer-events-none absolute left-[8.333%] right-[8.333%] top-5 h-0.5 -translate-y-1/2 rounded-full bg-white/80 ring-1 ring-brand/10 sm:top-6"
+        aria-hidden="true"
+      >
+        <span
+          class="absolute inset-y-0 left-0 rounded-full bg-brand transition-[width] duration-300 ease-out"
+          style="width: {% widthratio progress 5 100 %}%"
+        ></span>
+      </div>
+      <ol class="relative z-10 grid grid-cols-6 gap-1">
+        {% for num, meta in steps.items %}
+          <li class="flex flex-col items-center text-center">
+            <a
+              href="{% url 'envelope1:wizard' submission.pk num %}"
+              class="group flex flex-col items-center focus:outline-none"
+              {% if num == step %}aria-current="step"{% endif %}
+            >
+              <span
+                class="flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold sm:h-11 sm:w-11
+                       {% if num == step %}bg-brand text-white shadow-md shadow-brand/25
+                       {% elif num < step %}bg-brand-100 text-brand ring-1 ring-brand/25
+                       {% else %}bg-white text-brand/45 ring-1 ring-brand/15{% endif %}"
+              >
+                {{ num }}
+              </span>
+              <span class="mt-2 hidden max-w-[6.5rem] text-[10px] font-medium leading-snug sm:block {% if num == step %}text-brand{% else %}text-slate-500{% endif %}">
+                {{ meta.short }}
+              </span>
+            </a>
+          </li>
+        {% endfor %}
+      </ol>
+    </div>
+  </div>
+</nav>
+{% endwith %}

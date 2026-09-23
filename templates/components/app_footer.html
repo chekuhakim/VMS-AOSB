@@ -1,0 +1,27 @@
+{% load static %}
+{# Shared partner strip + copyright — used on every vendor-facing page #}
+<footer class="mt-auto flex flex-wrap items-center justify-between gap-3 px-4 py-4 text-xs text-slate-500 sm:px-6">
+  <div class="flex items-center gap-3 sm:gap-4" aria-label="Partners">
+    <img
+      src="{% static 'brand/partners/mcmc.avif' %}"
+      alt=""
+      class="h-6 w-auto object-contain opacity-70 sm:h-7"
+    />
+    <img
+      src="{% static 'brand/partners/cidb.avif' %}"
+      alt=""
+      class="h-6 w-auto object-contain opacity-70 sm:h-7"
+    />
+    <img
+      src="{% static 'brand/partners/iso.avif' %}"
+      alt=""
+      class="h-6 w-auto object-contain opacity-70 sm:h-7"
+    />
+    <img
+      src="{% static 'brand/partners/spdp.avif' %}"
+      alt=""
+      class="h-6 w-auto object-contain opacity-70 sm:h-7"
+    />
+  </div>
+  <p>&copy; 2026 {{ brand.legal_name }}</p>
+</footer>

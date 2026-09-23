@@ -43,6 +43,7 @@ config/          # Django project settings & root URLs
 core/            # Shell routes + shared context
 accounts/        # Roles, vendor profile, company switcher
 vendors/         # Company registry
+envelope1/       # Envelope 1 wizard, vault listings, withdrawal
 documents/       # Storage helper + future vault
 audit/           # Append-only AuditLog
 templates/       # HTML + reusable components
@@ -52,9 +53,9 @@ static/          # CSS / JS assets
 ## Build phases
 
 - **Phase 0 (done):** foundations — roles, audit model, company switcher, storage helper
-- **Phase 1 (done):** vendor auth (`/register`, `/login`, confirm-email code, forgot-password)
-- Phase 2: company registration wizard
-- Phase 3: Envelope 1 + document vault
+- **Phase 1 (done):** vendor auth (`/register`, `/login`, confirm-email code, forgot-password, Google)
+- **Phase 2 (done):** company registration wizard (6 steps, PDFs, rules auto approve/reject)
+- **Phase 3 (done):** Envelope 1 vendor wizard + document vault + withdrawal request
 - Phase 4: admin evaluation / approval / audit UI
 - Phase 5: tender / project / RFQ
 - Phase 6: hardening

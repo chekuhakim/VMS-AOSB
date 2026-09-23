@@ -27,8 +27,8 @@ def design_system(request) -> dict[str, Any]:  # type: ignore[no-untyped-def]
             {"label": "Dashboard", "url_name": "core:dashboard", "icon": "home"},
             {"label": "Register company", "url_name": "vendors:register_company", "icon": "plus"},
             {"label": "Your company", "url_name": "vendors:your_company", "icon": "building"},
-            {"label": "Envelope 1", "url_name": "core:envelope1", "icon": "file"},
-            {"label": "Document vault", "url_name": "core:document_vault", "icon": "folder"},
+            {"label": "Envelope 1", "url_name": "envelope1:home", "icon": "file"},
+            {"label": "Document vault", "url_name": "envelope1:vault", "icon": "folder"},
             {"label": "Project", "url_name": "core:project", "icon": "briefcase"},
             {"label": "Your bid", "url_name": "core:your_bid", "icon": "tag"},
         ]
