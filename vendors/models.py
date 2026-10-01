@@ -2,8 +2,33 @@
 
 from __future__ import annotations
 
+import re
+
 from django.conf import settings
 from django.db import models
+from django.db.models import F, Q, Value
+from django.db.models.functions import Replace, Upper
+
+# Government-issued identifiers: one legal entity may hold each value only once
+UNIQUE_IDENTIFIER_FIELDS: dict[str, str] = {
+    "ssm_registration_number": "SSM Registration Number",
+    "cidb_registration_number": "CIDB Registration Number",
+    "st_license_number": "ST License Number",
+    "lhdn_tin": "LHDN TIN",
+    "sst_registration_number": "SST Registration Number",
+}
+
+
+def normalize_identifier(value: str | None) -> str:
+    """Stored form: no whitespace, upper-case (dashes kept for readability)."""
+    return re.sub(r"\s+", "", value or "").upper()
+
+
+def identifier_key(field: str) -> Upper:
+    """Comparison key ignoring case, spaces and dashes (2020-0123 == 20200123)."""
+    return Upper(
+        Replace(Replace(F(field), Value(" "), Value("")), Value("-"), Value(""))
+    )
 
 
 class Company(models.Model):
@@ -101,6 +126,16 @@ class Company(models.Model):
                 fields=["owner", "name"],
                 name="uniq_company_name_per_owner",
             ),
+            # Blank values are allowed on many drafts; filled identifiers are unique system-wide
+            *[
+                models.UniqueConstraint(
+                    identifier_key(field),
+                    condition=~Q(**{field: ""}),
+                    name=f"uniq_company_{field}",
+                    violation_error_message=f"This {label} is already registered to another company.",
+                )
+                for field, label in UNIQUE_IDENTIFIER_FIELDS.items()
+            ],
         ]
 
     def __str__(self) -> str:

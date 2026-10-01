@@ -244,10 +244,8 @@ def envelope1_wizard(request: HttpRequest, pk: int, step: int) -> HttpResponse:
                     object_type="Envelope1Submission",
                     object_id=submission.pk,
                 )
-                messages.success(
-                    request,
-                    "Envelope 1 submitted. Procurement will start evaluation soon.",
-                )
+                # Confirmation shown as a SweetAlert on the next page load (not a toast)
+                request.session["envelope1_just_submitted"] = submission.pk
                 return redirect("envelope1:wizard", pk=submission.pk, step=6)
         else:
             pack_form = DocumentPackForm(doc_types=doc_types, existing=docs)
@@ -266,6 +264,13 @@ def envelope1_wizard(request: HttpRequest, pk: int, step: int) -> HttpResponse:
             "docs": docs,
             "editable": editable,
             "msa_ready": bool(submission.msa_party_saved_at),
+            "just_submitted": request.session.pop("envelope1_just_submitted", None)
+            == submission.pk,
+            "pending_withdrawal": submission.withdrawal_requests.filter(
+                status=WithdrawalRequest.Status.PENDING
+            ).first()
+            if not editable
+            else None,
         },
     )
 

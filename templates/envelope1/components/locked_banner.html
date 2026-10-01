@@ -1,0 +1,40 @@
+{# Shown above the stepper when the Envelope 1 is not editable. Expects `submission`, `pending_withdrawal`. #}
+<div class="mb-6 flex flex-col gap-4 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between" role="status">
+  <div class="flex items-start gap-3">
+    <svg class="mt-0.5 h-6 w-6 shrink-0 text-rose-600" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path fill-rule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3A5.25 5.25 0 0012 1.5zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clip-rule="evenodd" />
+    </svg>
+    <div>
+      <p class="text-base font-bold text-rose-900">
+        {% if submission.status == "pending_director_approval" %}
+          Envelope 1 is awaiting Director approval. Fields are locked.
+        {% elif submission.status == "approved" %}
+          Envelope 1 has been approved. Fields are locked.
+        {% elif submission.status == "rejected" %}
+          Envelope 1 was not approved. Fields are locked.
+        {% else %}
+          Envelope 1 is currently under review by Procurement. Fields are locked.
+        {% endif %}
+      </p>
+      <p class="mt-0.5 text-sm text-rose-700">
+        {% if pending_withdrawal %}
+          Your withdrawal request ({{ pending_withdrawal.created_at|date:"j M Y, g:i A" }}) is waiting for Procurement review.
+        {% elif submission.is_locked %}
+          Need to make changes? Request a withdrawal — once Procurement approves it, your Envelope 1 is unlocked.
+        {% else %}
+          Changes are not allowed at this stage.
+        {% endif %}
+      </p>
+    </div>
+  </div>
+  {% if pending_withdrawal %}
+    <span class="inline-flex shrink-0 items-center justify-center rounded-xl border border-rose-300 bg-white px-5 py-2.5 text-sm font-semibold text-rose-700">
+      Withdrawal requested
+    </span>
+  {% elif submission.is_locked %}
+    <a href="{% url 'envelope1:withdrawal' submission.pk %}"
+       class="inline-flex shrink-0 items-center justify-center rounded-xl bg-rose-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2">
+      Request a Withdrawal
+    </a>
+  {% endif %}
+</div>

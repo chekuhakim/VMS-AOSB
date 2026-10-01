@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "accounts",
     "vendors",
     "envelope1",
+    "staff",
     "documents",
     "audit",
 ]

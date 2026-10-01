@@ -1,4 +1,4 @@
-{# Flash messages + system notifications — auto-hide after 30s, dismissible #}
+{# Flash messages + system notifications — auto-hide after 7s (marked read, kept in inbox); × dismisses #}
 <div
   id="app-toast-stack"
   class="pointer-events-none fixed inset-x-0 top-20 z-[60] flex flex-col items-center gap-3 px-4 sm:items-end sm:px-6"
@@ -9,7 +9,7 @@
       <div
         class="app-toast pointer-events-auto w-full max-w-lg overflow-hidden rounded-2xl border border-brand/20 bg-brand-50/95 shadow-lg shadow-brand/10 backdrop-blur"
         data-toast
-        data-ttl="30000"
+        data-ttl="7000"
         role="status"
       >
         <div class="flex items-start gap-3 px-4 py-3.5">
@@ -41,8 +41,9 @@
              {% else %}border-brand/20 bg-brand-50/95 shadow-brand/10
              {% endif %}"
       data-toast
-      data-ttl="30000"
+      data-ttl="7000"
       data-dismiss-url="{% url 'accounts:notification_dismiss' note.pk %}"
+      data-read-url="{% url 'accounts:notification_read' note.pk %}"
       role="status"
     >
       <div class="flex items-start gap-3 px-4 py-3.5">
@@ -95,13 +96,14 @@
     }
     var csrfToken = (csrf && csrf.value) || getCookie('csrftoken')
 
-    function dismissToast(el, postDismiss) {
+    // urlAttr: data-dismiss-url (× — hide from inbox) or data-read-url (timeout — keep in inbox)
+    function dismissToast(el, urlAttr) {
       el.classList.add('app-toast-out')
       setTimeout(function () {
         el.remove()
       }, 280)
-      if (postDismiss) {
-        var url = el.getAttribute('data-dismiss-url')
+      if (urlAttr) {
+        var url = el.getAttribute(urlAttr)
         if (url) {
           fetch(url, {
             method: 'POST',
@@ -115,7 +117,7 @@
     }
 
     document.querySelectorAll('[data-toast]').forEach(function (el) {
-      var ttl = parseInt(el.getAttribute('data-ttl') || '30000', 10)
+      var ttl = parseInt(el.getAttribute('data-ttl') || '7000', 10)
       var timer = el.querySelector('.app-toast-timer')
       if (timer) {
         timer.style.transition = 'transform ' + ttl + 'ms linear'
@@ -124,13 +126,13 @@
         })
       }
       var auto = setTimeout(function () {
-        dismissToast(el, true)
+        dismissToast(el, 'data-read-url')
       }, ttl)
       var btn = el.querySelector('.app-toast-close')
       if (btn) {
         btn.addEventListener('click', function () {
           clearTimeout(auto)
-          dismissToast(el, true)
+          dismissToast(el, 'data-dismiss-url')
         })
       }
     })

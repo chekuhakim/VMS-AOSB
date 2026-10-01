@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900">Withdrawal requests</h1>
+      <p class="mt-1 text-sm text-slate-600">Unlock locked Envelope 1 packs when vendors need to revise.</p>
+    </div>
+    <form method="get" class="flex gap-2">
+      <select name="status" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+        <option value="pending" {% if status == "pending" %}selected{% endif %}>Pending</option>
+        <option value="approved" {% if status == "approved" %}selected{% endif %}>Approved</option>
+        <option value="rejected" {% if status == "rejected" %}selected{% endif %}>Rejected</option>
+      </select>
+      <button type="submit" class="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Filter</button>
+    </form>
+  </div>
+
+  <div class="space-y-4">
+    {% for w in withdrawals %}
+      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p class="font-semibold text-slate-900">{{ w.submission.company.name }}</p>
+            <p class="text-xs text-slate-500">
+              {{ w.get_status_display }} · {{ w.created_at|date:"d M Y H:i" }}
+              {% if w.requested_by %}· by {{ w.requested_by }}{% endif %}
+            </p>
+            <p class="mt-2 text-sm text-slate-700">{{ w.reason }}</p>
+          </div>
+          <a href="{% url 'staff:envelope1_detail' w.submission_id %}" class="text-sm font-medium text-brand">Open E1</a>
+        </div>
+        {% if can_evaluate and w.status == "pending" %}
+          <form method="post" action="{% url 'staff:withdrawal_decide' w.pk %}" class="mt-4 flex flex-col gap-2 sm:flex-row">
+            {% csrf_token %}
+            <input type="text" name="note" placeholder="Review note" class="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+            <button type="submit" name="decision" value="approve" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">Approve unlock</button>
+            <button type="submit" name="decision" value="reject" class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white">Reject</button>
+          </form>
+        {% endif %}
+      </div>
+    {% empty %}
+      <div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+        No withdrawal requests in this filter.
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}

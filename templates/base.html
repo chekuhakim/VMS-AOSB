@@ -46,7 +46,7 @@
       {% include "components/app_topbar.html" %}
       {% include "components/notification_toasts.html" %}
 
-      <main class="flex flex-1 flex-col bg-gradient-to-b from-peach to-brand-50">
+      <main class="flex flex-1 flex-col bg-gradient-to-b from-peach to-brand-50 transition-[padding] duration-300 ease-out lg:[.nav-open_&]:pl-72">
         {% block main %}
           <div class="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
             {% block content %}{% endblock %}

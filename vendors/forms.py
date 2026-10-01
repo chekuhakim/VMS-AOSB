@@ -4,10 +4,16 @@ from __future__ import annotations
 
 from django import forms
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 from django.utils import timezone
 
 from vendors.declarations import DECLARATION_TEXT, DECLARATION_VERSION
-from vendors.models import Company
+from vendors.models import (
+    UNIQUE_IDENTIFIER_FIELDS,
+    Company,
+    identifier_key,
+    normalize_identifier,
+)
 
 # Shared Tailwind-friendly widget attrs
 _INPUT = {
@@ -68,6 +74,26 @@ def _mark_required_labels(form: forms.BaseForm) -> None:
     for field in form.fields.values():
         if field.required and field.label and not str(field.label).endswith("*"):
             field.label = f"{field.label} *"
+
+
+def _check_unique_identifier(form: forms.ModelForm, cleaned: dict, field: str) -> None:
+    """Normalize a government identifier and reject it if another company holds it."""
+    value = normalize_identifier(cleaned.get(field))
+    cleaned[field] = value
+    if not value:
+        return
+    key = value.replace("-", "")
+    clash = Company.objects.annotate(_key=identifier_key(field)).filter(
+        ~Q(**{field: ""}), _key=key
+    )
+    if form.instance.pk:
+        clash = clash.exclude(pk=form.instance.pk)
+    if clash.exists():
+        form.add_error(
+            field,
+            f"This {UNIQUE_IDENTIFIER_FIELDS[field]} is already registered to another company. "
+            "Contact Procurement if you believe this is a mistake.",
+        )
 
 
 def _require_future_or_today(field: forms.Field) -> None:
@@ -161,6 +187,7 @@ class Step2SSMForm(forms.ModelForm):
 
     def clean(self) -> dict:
         cleaned = super().clean()
+        _check_unique_identifier(self, cleaned, "ssm_registration_number")
         if cleaned.get("is_enterprise"):
             expiry = cleaned.get("ssm_document_expiry")
             if not expiry:
@@ -230,6 +257,11 @@ class Step3CIDBForm(forms.ModelForm):
         if pdf:
             validate_pdf_upload(pdf)
         return pdf
+
+    def clean(self) -> dict:
+        cleaned = super().clean()
+        _check_unique_identifier(self, cleaned, "cidb_registration_number")
+        return cleaned
 
     def clean_cidb_certificate_expiry(self):
         expiry = self.cleaned_data["cidb_certificate_expiry"]
@@ -336,6 +368,8 @@ class Step4STForm(forms.ModelForm):
             expiry = cleaned.get("st_certificate_expiry")
             if expiry and expiry < timezone.localdate():
                 self.add_error("st_certificate_expiry", "ST license is already expired.")
+            # Only checked when in scope — the field is cleared below when the answer is No
+            _check_unique_identifier(self, cleaned, "st_license_number")
         else:
             # Clear ST details when scope is No
             cleaned["st_contractor_class"] = ""
@@ -384,6 +418,12 @@ class Step5LHDNForm(forms.ModelForm):
         for field in self.fields.values():
             field.required = True
         _mark_required_labels(self)
+
+    def clean(self) -> dict:
+        cleaned = super().clean()
+        _check_unique_identifier(self, cleaned, "lhdn_tin")
+        _check_unique_identifier(self, cleaned, "sst_registration_number")
+        return cleaned
 
 
 class Step6HSEForm(forms.ModelForm):

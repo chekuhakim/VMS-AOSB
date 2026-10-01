@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 
+{% block extra_head %}
+  {% if step == 6 %}<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>{% endif %}
+{% endblock %}
+
 {% block content %}
   <div class="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
     <div>
@@ -13,13 +17,11 @@
         {% for num, meta in steps.items %}{% if num == step %}{{ meta.hint }}{% endif %}{% endfor %}
       </p>
     </div>
-    {% if not editable %}
-      <div class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
-        Locked for evaluation.
-        <a href="{% url 'envelope1:withdrawal' submission.pk %}" class="font-semibold underline">Request withdrawal</a>
-      </div>
-    {% endif %}
   </div>
+
+  {% if not editable %}
+    {% include "envelope1/components/locked_banner.html" %}
+  {% endif %}
 
   {% include "envelope1/components/stepper.html" %}
 
@@ -27,6 +29,11 @@
     <form method="post" enctype="multipart/form-data" class="space-y-5">
       {% csrf_token %}
 
+      {# Locked packs: fields stay visible but blurred and disabled; navigation below stays usable #}
+      <fieldset
+        class="min-w-0 space-y-5 {% if not editable %}pointer-events-none select-none opacity-60 blur-[1.5px]{% endif %}"
+        {% if not editable %}disabled aria-disabled="true"{% endif %}
+      >
       {% if form and form.non_field_errors %}
         <div class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ form.non_field_errors }}</div>
       {% endif %}
@@ -77,7 +84,7 @@
           </div>
           {{ form.signed_msa_pdf }}
           {% if docs.signed_msa %}
-            <p class="mt-1 text-xs text-emerald-700">Signed MSA on file (v{{ docs.signed_msa.version }}) — upload again only for a new version.</p>
+            {% include "envelope1/components/document_on_file.html" with doc=docs.signed_msa %}
           {% endif %}
           {% if form.signed_msa_pdf.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.signed_msa_pdf.errors.0 }}</p>{% endif %}
         </div>
@@ -106,8 +113,8 @@
                       {% if field.errors %}<p class="mt-1 text-xs text-rose-600">{{ field.errors.0 }}</p>{% endif %}
                     {% endif %}
                   {% endfor %}
-                  {% if meta.has_file %}
-                    <p class="mt-1 text-xs text-emerald-700">On file — upload again only for a new version.</p>
+                  {% if meta.document %}
+                    {% include "envelope1/components/document_on_file.html" with doc=meta.document %}
                   {% endif %}
                 </div>
                 {% if meta.needs_expiry %}
@@ -126,6 +133,7 @@
           {% endfor %}
         </div>
       {% endif %}
+      </fieldset>
 
       <div class="flex flex-col-reverse gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex gap-2">
@@ -159,6 +167,7 @@
             {% elif step == 6 %}
               <button
                 type="submit"
+                id="envelope1-submit-btn"
                 class="inline-flex items-center justify-center rounded-xl bg-brand px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
               >Submit Envelope 1</button>
             {% else %}
@@ -172,4 +181,63 @@
       </div>
     </form>
   </div>
+{% endblock %}
+
+{% block extra_js %}
+  {% if step == 6 %}
+    <script>
+      (function () {
+        if (typeof Swal === 'undefined') return
+        var buttonClasses = {
+          popup: 'rounded-2xl',
+          confirmButton:
+            'ml-2 inline-flex items-center justify-center rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700',
+          cancelButton:
+            'inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50',
+        }
+
+        // Submitting locks the pack for Procurement — confirm before posting
+        var btn = document.getElementById('envelope1-submit-btn')
+        var form = btn && btn.form
+        if (form) {
+          var confirmed = false
+          form.addEventListener('submit', function (e) {
+            if (confirmed) return
+            e.preventDefault()
+            Swal.fire({
+              title: 'Submit Envelope 1?',
+              html:
+                'Your Envelope&nbsp;1 for <strong>{{ company.name|escapejs }}</strong> will be sent to Procurement for evaluation.<br><br>' +
+                'Once Procurement starts reviewing, fields are locked and changes need a withdrawal request.',
+              icon: 'question',
+              showCancelButton: true,
+              confirmButtonText: 'Yes, submit',
+              cancelButtonText: 'Review again',
+              reverseButtons: true,
+              focusCancel: true,
+              buttonsStyling: false,
+              customClass: buttonClasses,
+            }).then(function (result) {
+              if (!result.isConfirmed) return
+              confirmed = true
+              btn.disabled = true
+              btn.textContent = 'Submitting…'
+              form.submit()
+            })
+          })
+        }
+
+        {% if just_submitted %}
+          Swal.fire({
+            title: 'Envelope 1 submitted!',
+            text: 'Procurement will start the evaluation soon. You can track its status from your dashboard.',
+            icon: 'success',
+            confirmButtonText: 'OK',
+            buttonsStyling: false,
+            customClass: buttonClasses,
+          })
+        {% endif %}
+      })()
+    </script>
+  {% endif %}
 {% endblock %}

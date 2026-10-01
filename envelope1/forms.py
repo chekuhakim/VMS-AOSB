@@ -152,6 +152,7 @@ class DocumentPackForm(forms.Form):
                     "pdf_name": pdf_name,
                     "exp_name": exp_name if needs_expiry else "",
                     "has_file": has_file,
+                    "document": existing.get(doc_type),
                     "needs_expiry": needs_expiry,
                 }
             )

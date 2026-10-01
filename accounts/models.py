@@ -28,7 +28,7 @@ class VendorProfile(models.Model):
 
 
 class Notification(models.Model):
-    """In-app vendor notification — toast for 30s + inbox via header bell."""
+    """In-app vendor notification — toast for 7s + inbox via header bell."""
 
     class Level(models.TextChoices):
         INFO = "info", "Info"

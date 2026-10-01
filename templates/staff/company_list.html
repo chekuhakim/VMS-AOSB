@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900">Registered companies</h1>
+      <p class="mt-1 text-sm text-slate-600">Search and review vendor company registrations.</p>
+    </div>
+    <form method="get" class="flex flex-wrap gap-2">
+      <input type="search" name="q" value="{{ q }}" placeholder="Name, SSM, email…"
+             class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand" />
+      <select name="status" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
+        <option value="">All statuses</option>
+        {% for value, label in status_choices %}
+          <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Filter</button>
+    </form>
+  </div>
+
+  <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <table class="min-w-full text-left text-sm">
+      <thead class="border-b border-slate-200 bg-cream text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <tr>
+          <th class="px-4 py-3">Company</th>
+          <th class="px-4 py-3">Owner</th>
+          <th class="px-4 py-3">Status</th>
+          <th class="px-4 py-3">Updated</th>
+          <th class="px-4 py-3"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for company in page_obj %}
+          <tr>
+            <td class="px-4 py-3 font-medium text-slate-900">{{ company.name }}</td>
+            <td class="px-4 py-3 text-slate-600">{{ company.owner.email|default:company.owner.username }}</td>
+            <td class="px-4 py-3">
+              {% if company.registration_status == "approved" %}
+                {% include "components/status_badge.html" with label="Approved" tone="success" %}
+              {% elif company.registration_status == "rejected" %}
+                {% include "components/status_badge.html" with label="Rejected" tone="danger" %}
+              {% elif company.registration_status == "submitted" %}
+                {% include "components/status_badge.html" with label="Submitted" tone="info" %}
+              {% else %}
+                {% include "components/status_badge.html" with label=company.get_registration_status_display tone="warning" %}
+              {% endif %}
+            </td>
+            <td class="px-4 py-3 text-slate-500">{{ company.updated_at|date:"d M Y" }}</td>
+            <td class="px-4 py-3 text-right">
+              <a href="{% url 'staff:company_detail' company.pk %}" class="font-medium text-brand hover:text-brand-700">Open</a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">No companies match.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page_obj.has_other_pages %}
+    <div class="mt-4 flex justify-center gap-2 text-sm">
+      {% if page_obj.has_previous %}
+        <a class="text-brand" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&status={{ status }}">Previous</a>
+      {% endif %}
+      <span class="text-slate-500">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}
+        <a class="text-brand" href="?page={{ page_obj.next_page_number }}&q={{ q }}&status={{ status }}">Next</a>
+      {% endif %}
+    </div>
+  {% endif %}
+{% endblock %}

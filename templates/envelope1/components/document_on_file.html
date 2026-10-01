@@ -1,0 +1,16 @@
+{# Latest saved upload for one document type. Expects `doc` (Envelope1Document). #}
+<div class="mt-2 flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2 text-xs">
+  <svg class="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+  <div class="min-w-0 flex-1">
+    <a href="{% url 'envelope1:view_envelope1_document' doc.pk %}" target="_blank" rel="noopener"
+       class="block truncate font-semibold text-emerald-800 hover:underline" title="{{ doc.original_filename }}">
+      {{ doc.original_filename|default:"Uploaded PDF" }}
+    </a>
+    <p class="mt-0.5 text-emerald-700">
+      Uploaded {{ doc.uploaded_at|date:"j M Y, g:i A" }} · v{{ doc.version }}
+    </p>
+    <p class="mt-0.5 text-slate-500">Upload again only to replace it with a new version.</p>
+  </div>
+</div>

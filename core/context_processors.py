@@ -16,10 +16,12 @@ def design_system(request) -> dict[str, Any]:  # type: ignore[no-untyped-def]
 
     if staff:
         nav_items = [
-            {"label": "Dashboard", "url_name": "core:admin_dashboard", "icon": "home"},
-            {"label": "Companies", "url_name": "core:registered_company", "icon": "building"},
-            {"label": "Envelope 1", "url_name": "core:submitted_envelope1", "icon": "file"},
-            {"label": "Audit log", "url_name": "core:audit_log", "icon": "list"},
+            {"label": "Dashboard", "url_name": "staff:admin_dashboard", "icon": "home"},
+            {"label": "Companies", "url_name": "staff:company_list", "icon": "building"},
+            {"label": "Envelope 1", "url_name": "staff:envelope1_list", "icon": "file"},
+            {"label": "Approvals", "url_name": "staff:approval_queue", "icon": "check"},
+            {"label": "Withdrawals", "url_name": "staff:withdrawal_list", "icon": "unlock"},
+            {"label": "Audit log", "url_name": "staff:audit_log", "icon": "list"},
             {"label": "Tender", "url_name": "core:tender", "icon": "briefcase"},
         ]
     else:

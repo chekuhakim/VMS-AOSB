@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900">Audit log</h1>
+      <p class="mt-1 text-sm text-slate-600">Append-only trail of who changed what, when.</p>
+    </div>
+    <form method="get" class="flex flex-wrap gap-2">
+      <input type="search" name="q" value="{{ q }}" placeholder="Action, actor, object…"
+             class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand" />
+      <select name="category" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
+        <option value="">All categories</option>
+        {% for value, label in category_choices %}
+          <option value="{{ value }}" {% if category == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Filter</button>
+    </form>
+  </div>
+
+  <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <table class="min-w-full text-left text-sm">
+      <thead class="border-b border-slate-200 bg-cream text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <tr>
+          <th class="px-4 py-3">When</th>
+          <th class="px-4 py-3">Actor</th>
+          <th class="px-4 py-3">Category</th>
+          <th class="px-4 py-3">Action</th>
+          <th class="px-4 py-3">Object</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for row in page_obj %}
+          <tr>
+            <td class="whitespace-nowrap px-4 py-3 text-slate-500">{{ row.created_at|date:"d M Y H:i:s" }}</td>
+            <td class="px-4 py-3 text-slate-800">{{ row.actor_label|default:"—" }}</td>
+            <td class="px-4 py-3 text-slate-600">{{ row.get_category_display }}</td>
+            <td class="px-4 py-3 font-medium text-slate-900">{{ row.action }}</td>
+            <td class="px-4 py-3 text-slate-500">
+              {% if row.object_type %}{{ row.object_type }}{% if row.object_id %} #{{ row.object_id }}{% endif %}{% else %}—{% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">No audit events match.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page_obj.has_other_pages %}
+    <div class="mt-4 flex justify-center gap-2 text-sm">
+      {% if page_obj.has_previous %}
+        <a class="text-brand" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&category={{ category }}">Previous</a>
+      {% endif %}
+      <span class="text-slate-500">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}
+        <a class="text-brand" href="?page={{ page_obj.next_page_number }}&q={{ q }}&category={{ category }}">Next</a>
+      {% endif %}
+    </div>
+  {% endif %}
+{% endblock %}

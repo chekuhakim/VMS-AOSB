@@ -18,8 +18,12 @@ from envelope1.services import latest_submission
 
 @login_required
 def dashboard(request: HttpRequest) -> HttpResponse:
-    """Vendor homepage at `/`."""
+    """Vendor homepage at `/`. Staff land on the admin pipeline dashboard."""
+    from accounts.roles import is_staff_user
     from vendors.models import Company
+
+    if is_staff_user(request.user):
+        return redirect("staff:admin_dashboard")
 
     company = None
     if is_vendor_user(request.user):
@@ -80,56 +84,32 @@ def your_bid(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def admin_dashboard(request: HttpRequest) -> HttpResponse:
-    return _placeholder(
-        request,
-        "Admin dashboard",
-        "Vendor onboarding pipeline and live audit summary arrive in Phase 4.",
-    )
+    return redirect("staff:admin_dashboard")
 
 
 @login_required
 def registered_company(request: HttpRequest) -> HttpResponse:
-    return _placeholder(
-        request,
-        "Registered company",
-        "Staff company registry arrives in Phase 4.",
-    )
+    return redirect("staff:company_list")
 
 
 @login_required
 def submitted_envelope1(request: HttpRequest) -> HttpResponse:
-    return _placeholder(
-        request,
-        "Submitted Envelope 1",
-        "Searchable Envelope 1 table arrives in Phase 4.",
-    )
+    return redirect("staff:envelope1_list")
 
 
 @login_required
 def qualification_checklist(request: HttpRequest) -> HttpResponse:
-    return _placeholder(
-        request,
-        "Qualification checklist",
-        "Procurement per-item pass/fail UI arrives in Phase 4.",
-    )
+    return redirect("staff:qualification_checklist")
 
 
 @login_required
 def approval(request: HttpRequest) -> HttpResponse:
-    return _placeholder(
-        request,
-        "Approval",
-        "Director approve/reject queue arrives in Phase 4.",
-    )
+    return redirect("staff:approval_queue")
 
 
 @login_required
 def audit_log(request: HttpRequest) -> HttpResponse:
-    return _placeholder(
-        request,
-        "Audit log",
-        "Append-only audit trail UI arrives in Phase 4 (model is ready now).",
-    )
+    return redirect("staff:audit_log")
 
 
 @login_required
