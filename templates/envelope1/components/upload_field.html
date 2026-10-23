@@ -1,0 +1,18 @@
+{# PDF upload (+ optional expiry). Expects `field`, optional `doc` (latest Envelope1Document), optional `expiry`. #}
+<div class="grid gap-3 {% if expiry %}sm:grid-cols-2{% endif %}">
+  <div>
+    <label for="{{ field.id_for_label }}" class="block text-xs font-medium text-slate-600">{{ field.label }}</label>
+    {{ field }}
+    {% if field.errors %}<p class="mt-1 text-xs text-rose-600">{{ field.errors.0 }}</p>{% endif %}
+    {% if doc %}
+      {% include "envelope1/components/document_on_file.html" with doc=doc %}
+    {% endif %}
+  </div>
+  {% if expiry %}
+    <div>
+      <label for="{{ expiry.id_for_label }}" class="block text-xs font-medium text-slate-600">{{ expiry.label }}</label>
+      {{ expiry }}
+      {% if expiry.errors %}<p class="mt-1 text-xs text-rose-600">{{ expiry.errors.0 }}</p>{% endif %}
+    </div>
+  {% endif %}
+</div>

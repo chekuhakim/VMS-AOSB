@@ -15,6 +15,7 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET, require_POST
 
 from accounts.company_context import set_active_company_id
@@ -37,13 +38,20 @@ _SCOPED_NEXT_REDIRECTS: list[tuple[re.Pattern[str], str]] = [
 ]
 
 
-def _next_after_company_switch(next_url: str) -> str:
+def _safe_next(request: HttpRequest, *candidates: str | None) -> str:
+    """First candidate that stays on this site; "/" otherwise (open-redirect guard)."""
+    for url in candidates:
+        if url and url_has_allowed_host_and_scheme(
+            url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+        ):
+            return url
+    return "/"
+
+
+def _next_after_company_switch(request: HttpRequest, next_url: str) -> str:
     """Drop object-scoped return URLs so the new active company is not 404'd."""
-    parsed = urlparse(next_url or "/")
-    # Reject absolute external URLs (open-redirect guard)
-    if parsed.scheme or parsed.netloc:
-        return "/"
-    path = parsed.path or "/"
+    safe = _safe_next(request, next_url)
+    path = urlparse(safe).path or "/"
     for pattern, route_name in _SCOPED_NEXT_REDIRECTS:
         if pattern.match(path):
             return reverse(route_name)
@@ -73,7 +81,7 @@ def abort_email_verification(request: HttpRequest) -> HttpResponse:
 def switch_company(request: HttpRequest) -> HttpResponse:
     """Set the active company in session after verifying ownership."""
     company_id = request.POST.get("company_id")
-    next_url = _next_after_company_switch(request.POST.get("next") or "/")
+    next_url = _next_after_company_switch(request, request.POST.get("next") or "/")
 
     company = get_object_or_404(Company, pk=company_id, owner=request.user)
     set_active_company_id(request, company.pk)
@@ -103,8 +111,7 @@ def notification_dismiss(request: HttpRequest, pk: int) -> HttpResponse:
     note.save(update_fields=["dismissed_at", "read_at"])
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return JsonResponse({"ok": True})
-    next_url = request.POST.get("next") or request.META.get("HTTP_REFERER") or "/"
-    return redirect(next_url)
+    return redirect(_safe_next(request, request.POST.get("next"), request.META.get("HTTP_REFERER")))
 
 
 @login_required
@@ -116,9 +123,7 @@ def notification_read(request: HttpRequest, pk: int) -> HttpResponse:
         note.save(update_fields=["read_at"])
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return JsonResponse({"ok": True})
-    if note.link_url:
-        return redirect(note.link_url)
-    return redirect(request.POST.get("next") or "/")
+    return redirect(_safe_next(request, note.link_url, request.POST.get("next")))
 
 
 @login_required
@@ -133,8 +138,7 @@ def notification_delete(request: HttpRequest, pk: int) -> HttpResponse:
     note.save(update_fields=["dismissed_at", "read_at"])
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return JsonResponse({"ok": True})
-    next_url = request.POST.get("next") or request.META.get("HTTP_REFERER") or "/"
-    return redirect(next_url)
+    return redirect(_safe_next(request, request.POST.get("next"), request.META.get("HTTP_REFERER")))
 
 
 @login_required
@@ -145,4 +149,4 @@ def notifications_mark_all_read(request: HttpRequest) -> HttpResponse:
     )
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return JsonResponse({"ok": True})
-    return redirect(request.POST.get("next") or "/")
+    return redirect(_safe_next(request, request.POST.get("next")))

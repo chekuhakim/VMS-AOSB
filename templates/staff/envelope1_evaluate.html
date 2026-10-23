@@ -9,15 +9,14 @@
       <p class="mt-1 text-sm text-slate-500">
         {{ company.ssm_registration_number|default:"No SSM no." }}
         {% if company.cidb_grade %}· CIDB {{ company.cidb_grade }}{% endif %}
-        {% if company.cidb_categories %}· {{ company.cidb_categories|join:", " }}{% endif %}
         · <span class="font-medium text-slate-700">{{ submission.get_status_display }}</span>
         {% if submission.is_locked and submission.locked_by %}· locked by {{ submission.locked_by }}{% endif %}
       </p>
     </div>
     <div class="flex shrink-0 gap-2">
-      <span class="rounded-full border border-emerald-400 bg-emerald-300/70 px-3 py-1 text-[11px] font-bold text-emerald-900">{{ progress.passed }} PASS</span>
-      <span class="rounded-full border border-rose-400 bg-rose-300/80 px-3 py-1 text-[11px] font-bold text-rose-900">{{ progress.failed }} FAIL</span>
-      <span class="rounded-full border border-brand/30 bg-peach px-3 py-1 text-[11px] font-bold text-brand-700">{{ progress.pending }} PENDING</span>
+      <span class="rounded-full border border-emerald-400 bg-emerald-300/70 px-3 py-1 text-[11px] font-bold text-emerald-900"><span data-eval-count="pass" data-saved-count="{{ progress.passed }}">{{ progress.passed }}</span> PASS</span>
+      <span class="rounded-full border border-rose-400 bg-rose-300/80 px-3 py-1 text-[11px] font-bold text-rose-900"><span data-eval-count="fail" data-saved-count="{{ progress.failed }}">{{ progress.failed }}</span> FAIL</span>
+      <span class="rounded-full border border-brand/30 bg-peach px-3 py-1 text-[11px] font-bold text-brand-700"><span data-eval-count="pending" data-saved-count="{{ progress.pending }}">{{ progress.pending }}</span> PENDING</span>
     </div>
   </div>
 
@@ -127,7 +126,7 @@
       </summary>
       <form method="post" action="{% url 'staff:envelope1_reject_eval' submission.pk %}" class="mt-3 space-y-3">
         {% csrf_token %}
-        <label for="reject-note" class="block text-xs font-medium text-rose-800">Reason (shared with the vendor) *</label>
+        <label for="reject-note" class="block text-xs font-medium text-rose-800">Reason (shared with the vendor) <span class="text-rose-600" aria-hidden="true">*</span></label>
         <textarea id="reject-note" name="note" rows="3" required class="w-full rounded-xl border border-rose-200 bg-white px-3 py-2 text-sm focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400"></textarea>
         <button type="submit" class="rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-700">Reject Envelope 1</button>
       </form>
@@ -145,5 +144,70 @@
         <button type="submit" name="decision" value="reject" class="rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-rose-700">Reject</button>
       </form>
     </section>
+  {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+  {% if editable %}
+    <script>
+      (function () {
+        var cards = Array.prototype.slice.call(document.querySelectorAll('[data-eval-card]'))
+        if (!cards.length) return
+
+        var PILL = {
+          pass: { text: 'Pass', cls: 'bg-emerald-300/70 text-emerald-900' },
+          fail: { text: 'Fail', cls: 'bg-rose-300/80 text-rose-900' },
+          pending: { text: 'Pending', cls: 'bg-peach text-brand-700' },
+        }
+        var ALL_PILL_CLASSES = 'bg-emerald-300/70 text-emerald-900 bg-rose-300/80 text-rose-900 bg-peach text-brand-700'.split(' ')
+
+        function selected(card) {
+          var checked = card.querySelector('input[type=radio]:checked')
+          return checked ? checked.value : 'pending'
+        }
+
+        // Header counters = saved totals adjusted by unsaved selections on this step
+        function refresh() {
+          var delta = { pass: 0, fail: 0, pending: 0 }
+          cards.forEach(function (card) {
+            var saved = card.getAttribute('data-saved') || 'pending'
+            var now = selected(card)
+            delta[saved] -= 1
+            delta[now] += 1
+
+            var pill = card.querySelector('[data-eval-pill]')
+            if (pill) {
+              ALL_PILL_CLASSES.forEach(function (c) { pill.classList.remove(c) })
+              PILL[now].cls.split(' ').forEach(function (c) { pill.classList.add(c) })
+              pill.textContent = PILL[now].text
+            }
+            var unsaved = card.querySelector('[data-eval-unsaved]')
+            if (unsaved) unsaved.classList.toggle('hidden', now === saved)
+          })
+          document.querySelectorAll('[data-eval-count]').forEach(function (el) {
+            var key = el.getAttribute('data-eval-count')
+            el.textContent = parseInt(el.getAttribute('data-saved-count') || '0', 10) + delta[key]
+          })
+        }
+
+        // Radios cannot be unchecked natively — clicking the active choice again resets to Pending
+        cards.forEach(function (card) {
+          var current = selected(card)
+          card.querySelectorAll('input[type=radio]').forEach(function (input) {
+            input.addEventListener('click', function () {
+              if (current === input.value) {
+                input.checked = false
+                current = 'pending'
+              } else {
+                current = input.value
+              }
+              refresh()
+            })
+          })
+        })
+
+        refresh()
+      })()
+    </script>
   {% endif %}
 {% endblock %}

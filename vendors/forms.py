@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.utils import timezone
 
+from core.form_labels import mark_required_labels, required_label
 from vendors.declarations import DECLARATION_TEXT, DECLARATION_VERSION
 from vendors.models import (
     UNIQUE_IDENTIFIER_FIELDS,
@@ -70,10 +71,8 @@ def validate_pdf_upload(uploaded) -> None:  # type: ignore[no-untyped-def]
 
 
 def _mark_required_labels(form: forms.BaseForm) -> None:
-    """Append * to labels of required fields for template display."""
-    for field in form.fields.values():
-        if field.required and field.label and not str(field.label).endswith("*"):
-            field.label = f"{field.label} *"
+    """Append a red * to labels of required fields for template display."""
+    mark_required_labels(form)
 
 
 def _check_unique_identifier(form: forms.ModelForm, cleaned: dict, field: str) -> None:
@@ -177,7 +176,7 @@ class Step2SSMForm(forms.ModelForm):
             "This company is an enterprise (requires SSM document expiry)"
         )
         # Expiry asterisk shown in template when visible; keep base label clean
-        self.fields["ssm_document_expiry"].label = "SSM Document Expiry *"
+        self.fields["ssm_document_expiry"].label = required_label("SSM Document Expiry")
 
     def clean_ssm_pdf(self):
         pdf = self.cleaned_data.get("ssm_pdf")
@@ -204,19 +203,6 @@ class Step3CIDBForm(forms.ModelForm):
         required=False,
         label="CIDB certificate (PDF)",
         widget=forms.ClearableFileInput(attrs=_FILE),
-    )
-    cidb_categories_input = forms.MultipleChoiceField(
-        required=True,
-        label="CIDB Categories",
-        choices=[
-            ("CE", "Civil Engineering (CE)"),
-            ("B", "Building (B)"),
-            ("ME", "Mechanical & Electrical (ME)"),
-            ("PW", "Plant & Machinery / Works"),
-        ],
-        widget=forms.CheckboxSelectMultiple(
-            attrs={"class": "space-y-2 text-sm text-slate-700"}
-        ),
     )
 
     class Meta:
@@ -248,8 +234,6 @@ class Step3CIDBForm(forms.ModelForm):
             self.fields[name].required = True
         self.fields["cidb_pdf"].required = self.require_pdf
         _require_future_or_today(self.fields["cidb_certificate_expiry"])
-        if self.instance and self.instance.cidb_categories:
-            self.fields["cidb_categories_input"].initial = self.instance.cidb_categories
         _mark_required_labels(self)
 
     def clean_cidb_pdf(self):
@@ -269,13 +253,6 @@ class Step3CIDBForm(forms.ModelForm):
             raise ValidationError("CIDB certificate is already expired.")
         return expiry
 
-    def save(self, commit: bool = True) -> Company:
-        company = super().save(commit=False)
-        company.cidb_categories = self.cleaned_data.get("cidb_categories_input") or []
-        if commit:
-            company.save()
-        return company
-
 
 class Step4STForm(forms.ModelForm):
     st_pdf = forms.FileField(
@@ -288,27 +265,21 @@ class Step4STForm(forms.ModelForm):
         model = Company
         fields = (
             "includes_electrical_work",
-            "st_contractor_class",
             "st_license_number",
             "st_certificate_expiry",
-            "chargeman_name",
         )
         labels = {
             "includes_electrical_work": "Does your scope include electrical work?",
-            "st_contractor_class": "ST Contractor Class",
             "st_license_number": "ST License Number",
             "st_certificate_expiry": "ST Certificate Expiry",
-            "chargeman_name": "Chargeman Name",
         }
         widgets = {
             "includes_electrical_work": forms.RadioSelect(
                 choices=((True, "Yes"), (False, "No")),
                 attrs=_RADIO,
             ),
-            "st_contractor_class": forms.TextInput(attrs=_INPUT),
             "st_license_number": forms.TextInput(attrs=_INPUT),
             "st_certificate_expiry": forms.DateInput(attrs={**_INPUT, "type": "date"}),
-            "chargeman_name": forms.TextInput(attrs=_INPUT),
         }
 
     def __init__(self, *args, **kwargs) -> None:  # type: ignore[no-untyped-def]
@@ -316,27 +287,14 @@ class Step4STForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["includes_electrical_work"].required = True
         # Detail fields only required when Yes (clean + UI)
-        for name in (
-            "st_contractor_class",
-            "st_license_number",
-            "st_certificate_expiry",
-            "chargeman_name",
-            "st_pdf",
-        ):
+        for name in ("st_license_number", "st_certificate_expiry", "st_pdf"):
             self.fields[name].required = False
         _require_future_or_today(self.fields["st_certificate_expiry"])
         _mark_required_labels(self)
-        for name in (
-            "st_contractor_class",
-            "st_license_number",
-            "st_certificate_expiry",
-            "chargeman_name",
-        ):
-            label = self.fields[name].label or name
-            if not str(label).endswith("*"):
-                self.fields[name].label = f"{label} *"
+        for name in ("st_license_number", "st_certificate_expiry"):
+            self.fields[name].label = required_label(self.fields[name].label or name)
         if self.require_pdf:
-            self.fields["st_pdf"].label = "ST license (PDF) *"
+            self.fields["st_pdf"].label = required_label("ST license (PDF)")
 
     def clean(self) -> dict:
         cleaned = super().clean()
@@ -349,12 +307,7 @@ class Step4STForm(forms.ModelForm):
             )
             return cleaned
         if electrical:
-            for field in (
-                "st_contractor_class",
-                "st_license_number",
-                "st_certificate_expiry",
-                "chargeman_name",
-            ):
+            for field in ("st_license_number", "st_certificate_expiry"):
                 if not cleaned.get(field):
                     self.add_error(field, "Required when electrical work is in scope.")
             pdf = cleaned.get("st_pdf")
@@ -372,20 +325,16 @@ class Step4STForm(forms.ModelForm):
             _check_unique_identifier(self, cleaned, "st_license_number")
         else:
             # Clear ST details when scope is No
-            cleaned["st_contractor_class"] = ""
             cleaned["st_license_number"] = ""
             cleaned["st_certificate_expiry"] = None
-            cleaned["chargeman_name"] = ""
             cleaned["st_pdf"] = None
         return cleaned
 
     def save(self, commit: bool = True) -> Company:
         company = super().save(commit=False)
         if not self.cleaned_data.get("includes_electrical_work"):
-            company.st_contractor_class = ""
             company.st_license_number = ""
             company.st_certificate_expiry = None
-            company.chargeman_name = ""
         if commit:
             company.save()
         return company
@@ -396,37 +345,59 @@ class Step5LHDNForm(forms.ModelForm):
         model = Company
         fields = (
             "lhdn_tin",
-            "sst_registration_number",
-            "myinvois_readiness",
-            "bank_account_for_payment",
+            "bank_name",
+            "bank_name_other",
+            "bank_account_number",
+            "bank_account_name",
         )
         labels = {
             "lhdn_tin": "LHDN TIN",
-            "sst_registration_number": "SST Registration Number",
-            "myinvois_readiness": "MyInvois Readiness",
-            "bank_account_for_payment": "Bank Account for Payment",
+            "bank_name": "Bank Name",
+            "bank_name_other": "Other Bank Name",
+            "bank_account_number": "Bank Account Number",
+            "bank_account_name": "Bank Account Name",
         }
         widgets = {
             "lhdn_tin": forms.TextInput(attrs=_INPUT),
-            "sst_registration_number": forms.TextInput(attrs=_INPUT),
-            "myinvois_readiness": forms.Select(attrs=_INPUT),
-            "bank_account_for_payment": forms.TextInput(attrs=_INPUT),
+            "bank_name": forms.Select(attrs=_INPUT),
+            "bank_name_other": forms.TextInput(attrs=_INPUT),
+            "bank_account_number": forms.TextInput(
+                attrs={**_INPUT, "inputmode": "numeric", "placeholder": "e.g. 5642 1234 5678"}
+            ),
+            "bank_account_name": forms.TextInput(
+                attrs={**_INPUT, "placeholder": "As printed on the bank statement"}
+            ),
         }
 
     def __init__(self, *args, **kwargs) -> None:  # type: ignore[no-untyped-def]
         super().__init__(*args, **kwargs)
-        for field in self.fields.values():
-            field.required = True
+        for name in ("lhdn_tin", "bank_name", "bank_account_number", "bank_account_name"):
+            self.fields[name].required = True
+        self.fields["bank_name"].choices = [("", "Select bank")] + list(Company.Bank.choices)
+        self.fields["bank_name_other"].required = False
         _mark_required_labels(self)
+        self.fields["bank_name_other"].label = required_label("Other Bank Name")
+
+    def clean_bank_account_number(self) -> str:
+        # Payment runs need a clean numeric account number; spaces/dashes are display-only
+        raw = self.cleaned_data.get("bank_account_number") or ""
+        digits = raw.replace(" ", "").replace("-", "")
+        if not digits.isdigit() or not 6 <= len(digits) <= 20:
+            raise ValidationError("Enter 6–20 digits (spaces and dashes are allowed).")
+        return digits
 
     def clean(self) -> dict:
         cleaned = super().clean()
         _check_unique_identifier(self, cleaned, "lhdn_tin")
-        _check_unique_identifier(self, cleaned, "sst_registration_number")
+        if cleaned.get("bank_name") == Company.Bank.OTHER:
+            if not (cleaned.get("bank_name_other") or "").strip():
+                self.add_error("bank_name_other", "Enter the bank name.")
+        else:
+            cleaned["bank_name_other"] = ""
         return cleaned
 
 
-class Step6HSEForm(forms.ModelForm):
+class Step6DeclarationForm(forms.ModelForm):
     declaration_accepted = forms.BooleanField(
         required=True,
         label="I agree to the declaration above",
@@ -435,26 +406,9 @@ class Step6HSEForm(forms.ModelForm):
 
     class Meta:
         model = Company
-        fields = (
-            "hse_representative_name",
-            "public_liability_coverage",
-            "declaration_accepted",
-        )
-        labels = {
-            "hse_representative_name": "HSE Representative Name",
-            "public_liability_coverage": "Public Liability Coverage",
-        }
-        widgets = {
-            "hse_representative_name": forms.TextInput(attrs=_INPUT),
-            "public_liability_coverage": forms.TextInput(
-                attrs={**_INPUT, "placeholder": "e.g. RM 1,000,000"}
-            ),
-        }
+        fields = ("declaration_accepted",)
 
     def __init__(self, *args, **kwargs) -> None:  # type: ignore[no-untyped-def]
         super().__init__(*args, **kwargs)
-        self.fields["hse_representative_name"].required = True
-        self.fields["public_liability_coverage"].required = True
         self.declaration_text = DECLARATION_TEXT
         self.declaration_version = DECLARATION_VERSION
-        _mark_required_labels(self)

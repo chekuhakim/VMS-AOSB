@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="mb-6">
+    <a href="{% url 'tenders:tender_detail' project.pk %}" class="text-sm font-medium text-brand hover:text-brand-700">← Back to {{ project.title }}</a>
+    <h1 class="mt-2 text-2xl font-bold tracking-tight text-slate-900">{% if rfq %}Edit {{ rfq.code }}{% else %}Add RFQ{% endif %}</h1>
+  </div>
+  {% include "tenders/staff/components/rfq_form_fields.html" with action_url=request.path %}
+{% endblock %}

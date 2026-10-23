@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+  {% if just_submitted %}<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>{% endif %}
+{% endblock %}
+
+{% block content %}
+  <div class="mb-6">
+    <a href="{% url 'tenders:project_list' %}" class="text-sm font-medium text-brand hover:text-brand-700">← Open projects</a>
+    <div class="mt-2 flex flex-wrap items-center gap-3">
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900">{{ project.title }}</h1>
+      {% include "tenders/components/project_status.html" with vendor_view=True %}
+    </div>
+    <p class="mt-1 font-mono text-xs text-slate-500">{{ project.reference }}</p>
+  </div>
+
+  {% if blockers and project.accepting_quotations %}
+    <div class="mb-6 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-800">
+      <p class="font-semibold">{{ company.name }} is not eligible to quote on this project</p>
+      {% for b in blockers %}<p class="mt-0.5">{{ b }}</p>{% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="mb-6 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+    {% include "tenders/components/project_summary.html" %}
+    <div class="mt-5 border-t border-slate-100 pt-5">
+      <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Scope of work</p>
+      <p class="mt-1 whitespace-pre-line text-sm text-slate-700">{{ project.scope }}</p>
+    </div>
+  </div>
+
+  <h2 class="mb-3 text-lg font-bold tracking-tight text-slate-900">RFQs</h2>
+  <div class="space-y-4">
+    {% for row in rows %}
+      {% with rfq=row.rfq quote=row.quote %}
+      <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div class="min-w-0">
+            <p class="font-mono text-xs text-slate-500">{{ rfq.code }}</p>
+            <p class="font-semibold text-slate-900">{{ rfq.title }}</p>
+            {% if rfq.description %}<p class="mt-1 whitespace-pre-line text-sm text-slate-600">{{ rfq.description }}</p>{% endif %}
+            <p class="mt-2 text-xs text-slate-500">
+              {% if rfq.quantity %}Qty {{ rfq.quantity|floatformat:"-2" }} {{ rfq.unit }} · {% endif %}
+              {% if rfq.document_filename %}<a class="font-medium text-brand" href="{% url 'tenders:vendor_rfq_document' rfq.pk %}" target="_blank" rel="noopener">Download tender document</a>{% else %}No tender document{% endif %}
+            </p>
+          </div>
+          <div class="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+            {% if quote %}
+              <span class="text-xs font-semibold {% if row.result.1 == 'emerald' %}text-emerald-700{% elif row.result.1 == 'rose' %}text-rose-700{% elif row.result.1 == 'amber' %}text-amber-700{% elif row.result.1 == 'sky' %}text-sky-700{% else %}text-slate-500{% endif %}">{{ row.result.0 }}</span>
+              {% if quote.status == "submitted" %}
+                <p class="text-sm font-semibold text-slate-900">RM {{ quote.total_price|floatformat:"2g" }}</p>
+              {% endif %}
+            {% endif %}
+            {% if not blockers %}
+              <div class="flex gap-2">
+                <a href="{% url 'tenders:quotation_form' project.pk rfq.pk %}" class="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700">
+                  {% if quote and quote.status == "submitted" %}Edit quotation{% else %}Submit quotation{% endif %}
+                </a>
+                {% if quote and quote.status == "submitted" %}
+                  <form method="post" action="{% url 'tenders:quotation_withdraw' quote.pk %}" onsubmit="return confirm('Withdraw your quotation for {{ rfq.code }}?')">
+                    {% csrf_token %}
+                    <button type="submit" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">Withdraw</button>
+                  </form>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endwith %}
+    {% endfor %}
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+  {% if just_submitted %}
+    <script>
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          title: 'Quotation submitted!',
+          text: 'Your sealed quotation for {{ just_submitted|escapejs }} has been received. You can edit or withdraw it until the closing time.',
+          icon: 'success',
+          confirmButtonText: 'OK',
+          buttonsStyling: false,
+          customClass: {
+            popup: 'rounded-2xl',
+            confirmButton: 'inline-flex items-center justify-center rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700',
+          },
+        })
+      }
+    </script>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,15 @@
+{# Key project facts: dates, closing, and CIDB grade requirement #}
+<dl class="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
+  <div>
+    <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Closes</dt>
+    <dd class="mt-1 font-medium text-slate-900">{{ project.closing_at|date:"d M Y, H:i" }}</dd>
+  </div>
+  <div>
+    <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Project period</dt>
+    <dd class="mt-1 font-medium text-slate-900">{{ project.start_date|date:"d M Y" }} – {{ project.end_date|date:"d M Y" }}</dd>
+  </div>
+  <div>
+    <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Min. CIDB grade</dt>
+    <dd class="mt-1 font-medium text-slate-900">{{ project.min_cidb_grade|default:"Any" }}</dd>
+  </div>
+</dl>

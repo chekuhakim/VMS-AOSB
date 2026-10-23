@@ -5,6 +5,8 @@ Secrets and Supabase connection details come from environment variables
 (.env locally, host env in production) via django-environ.
 """
 
+import sys
+import tempfile
 from pathlib import Path
 
 import environ
@@ -50,6 +52,7 @@ INSTALLED_APPS = [
     "vendors",
     "envelope1",
     "staff",
+    "tenders",
     "documents",
     "audit",
 ]
@@ -183,6 +186,8 @@ EMAIL_PORT = env.int("EMAIL_PORT", default=587)
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+# Public base URL used to build absolute links in notification emails
+SITE_URL = env("SITE_URL", default="http://localhost:8000")
 
 # ---------------------------------------------------------------------------
 # Internationalisation — Malaysia-oriented defaults
@@ -211,3 +216,15 @@ SUPABASE_SERVICE_ROLE_KEY = env("SUPABASE_SERVICE_ROLE_KEY", default="")
 SUPABASE_STORAGE_BUCKET = env("SUPABASE_STORAGE_BUCKET", default="vendor-documents")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# ---------------------------------------------------------------------------
+# Test runs: `manage.py test` must never touch the live Supabase database or bucket,
+# whatever .env says — use in-memory SQLite, local temp storage, and fast hashing.
+# ---------------------------------------------------------------------------
+TESTING = len(sys.argv) > 1 and sys.argv[1] == "test"
+if TESTING:
+    DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+    SUPABASE_URL = ""
+    SUPABASE_SERVICE_ROLE_KEY = ""
+    MEDIA_ROOT = Path(tempfile.mkdtemp(prefix="vms-test-media-"))
+    PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]

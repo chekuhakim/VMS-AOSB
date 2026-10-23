@@ -8,32 +8,62 @@ from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import HttpRequest, HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods
 
 from accounts.company_context import ensure_active_company, set_active_company_id
-from accounts.roles import is_vendor_user
+from accounts.models import Notification
+from accounts.notifications import notify_event, staff_recipients
+from accounts.roles import PROCUREMENT, is_vendor_user
 from audit.models import AuditLog
 from audit.services import write_audit
 from documents.storage import open_stored
-from envelope1.checklist import STEP_DOC_TYPES, STEP_META
+from envelope1.checklist import ITEM_HELP, LEAD_TIME_DESCRIPTION, STEP_META
 from envelope1.documents import save_envelope1_pdf
 from envelope1.forms import (
-    DocumentPackForm,
+    BaseRowFormSet,
+    QuestionnaireStepForm,
     Step1MSAPartyForm,
     Step2SignedMSAForm,
+    Step3FinancialsForm,
+    Step4LogisticsForm,
+    Step5QualityForm,
+    Step6TrackRecordForm,
     WithdrawalRequestForm,
+    build_row_formset,
 )
-from envelope1.models import Envelope1Document, Envelope1Submission, WithdrawalRequest
-from envelope1.msa import build_draft_msa_pdf
+from envelope1.models import (
+    Envelope1Document,
+    Envelope1Item,
+    Envelope1Submission,
+    WithdrawalRequest,
+)
+from envelope1.msa import build_draft_msa_pdf, build_no_advance_pdf
 from envelope1.services import (
     can_access_envelope1,
     get_or_create_draft,
     latest_docs_map,
     latest_submission,
-    missing_required_docs,
+    missing_items,
 )
+
+STEP_FORMS: dict[int, type[QuestionnaireStepForm]] = {
+    3: Step3FinancialsForm,
+    4: Step4LogisticsForm,
+    5: Step5QualityForm,
+    6: Step6TrackRecordForm,
+}
+STEP_TABLES: dict[int, str] = {
+    3: "financial_statements",
+    4: "primary_suppliers",
+    6: "past_projects",
+}
 from vendors.models import Company, CompanyDocument
+
+
+def _staff_submitted_key(submission: Envelope1Submission) -> str:
+    return f"staff-e1-{submission.pk}-submitted"
 
 
 def _vendor_company(request: HttpRequest) -> Company | HttpResponse:
@@ -100,11 +130,14 @@ def envelope1_wizard(request: HttpRequest, pk: int, step: int) -> HttpResponse:
     editable = submission.is_editable
 
     if request.method == "POST" and not editable:
-        messages.error(request, "This Envelope 1 cycle is locked. Request a withdrawal to edit.")
+        if submission.can_reopen:
+            messages.error(request, "This Envelope 1 is submitted. Click Edit to reopen it first.")
+        else:
+            messages.error(request, "This Envelope 1 cycle is locked. Request a withdrawal to edit.")
         return redirect("envelope1:wizard", pk=submission.pk, step=step)
 
     form: forms.BaseForm | None = None
-    pack_form: DocumentPackForm | None = None
+    row_formset: BaseRowFormSet | None = None
 
     if step == 1:
         if request.method == "POST":
@@ -134,19 +167,11 @@ def envelope1_wizard(request: HttpRequest, pk: int, step: int) -> HttpResponse:
     elif step == 2:
         require_pdf = Envelope1Document.DocType.SIGNED_MSA not in docs
         if request.method == "POST":
-            form = Step2SignedMSAForm(
-                request.POST,
-                request.FILES,
-                require_pdf=require_pdf,
-                initial={"msa_effective_date": submission.msa_effective_date},
-            )
+            form = Step2SignedMSAForm(request.POST, request.FILES, require_pdf=require_pdf)
             if form.is_valid():
                 with transaction.atomic():
-                    submission.msa_effective_date = form.cleaned_data["msa_effective_date"]
                     submission.wizard_step = max(submission.wizard_step, 2)
-                    submission.save(
-                        update_fields=["msa_effective_date", "wizard_step", "updated_at"]
-                    )
+                    submission.save(update_fields=["wizard_step", "updated_at"])
                     pdf = form.cleaned_data.get("signed_msa_pdf")
                     if pdf:
                         save_envelope1_pdf(
@@ -167,41 +192,28 @@ def envelope1_wizard(request: HttpRequest, pk: int, step: int) -> HttpResponse:
                 messages.success(request, "Signed MSA details saved.")
                 return redirect("envelope1:wizard", pk=submission.pk, step=3)
         else:
-            form = Step2SignedMSAForm(
-                require_pdf=require_pdf,
-                initial={"msa_effective_date": submission.msa_effective_date},
-            )
+            form = Step2SignedMSAForm(require_pdf=require_pdf)
 
-    elif step in (3, 4, 5, 6):
-        doc_types = STEP_DOC_TYPES[step]
+    elif step in STEP_FORMS:
+        form_cls = STEP_FORMS[step]
+        table_kind = STEP_TABLES.get(step)
+        data = request.POST if request.method == "POST" else None
+        files = request.FILES if request.method == "POST" else None
+        form = form_cls(data, files, submission=submission, existing=docs)
+        if table_kind:
+            row_formset = build_row_formset(table_kind, submission, data, files)
         if request.method == "POST":
-            pack_form = DocumentPackForm(
-                request.POST,
-                request.FILES,
-                doc_types=doc_types,
-                existing=docs,
+            # 4.1 table only matters when the vendor answers "Yes"
+            table_in_use = row_formset is not None and (
+                table_kind != "past_projects" or request.POST.get("has_past_projects") == "yes"
             )
-            if pack_form.is_valid():
+            form_ok = form.is_valid()
+            table_ok = row_formset.is_valid() if table_in_use else True
+            if form_ok and table_ok:
                 with transaction.atomic():
-                    for meta in pack_form.doc_meta:
-                        pdf = pack_form.cleaned_data.get(meta["pdf_name"])
-                        expiry = (
-                            pack_form.cleaned_data.get(meta["exp_name"])
-                            if meta["needs_expiry"]
-                            else None
-                        )
-                        if pdf:
-                            save_envelope1_pdf(
-                                submission=submission,
-                                doc_type=meta["doc_type"],
-                                uploaded=pdf,
-                                user=request.user,
-                                expiry_date=expiry,
-                            )
-                        elif meta["needs_expiry"] and expiry and meta["doc_type"] in docs:
-                            doc = docs[meta["doc_type"]]
-                            doc.expiry_date = expiry
-                            doc.save(update_fields=["expiry_date"])
+                    form.save(user=request.user)
+                    if table_in_use:
+                        row_formset.save_rows(submission=submission, user=request.user)
                     submission.wizard_step = max(submission.wizard_step, step)
                     submission.save(update_fields=["wizard_step", "updated_at"])
                     write_audit(
@@ -218,12 +230,16 @@ def envelope1_wizard(request: HttpRequest, pk: int, step: int) -> HttpResponse:
                     messages.success(request, f"Step {step} saved.")
                     return redirect("envelope1:wizard", pk=submission.pk, step=step + 1)
 
-                # Step 6 — submit Envelope 1
-                missing = missing_required_docs(submission)
-                if missing or not submission.msa_party_saved_at or not submission.msa_effective_date:
+                # Step 6 — submit Envelope 1 only when every checklist item is answered
+                missing = missing_items(submission)
+                if missing or not submission.msa_party_saved_at:
+                    labels = dict(Envelope1Item.choices)
+                    pending = [labels[item] for item in missing]
+                    if not submission.msa_party_saved_at:
+                        pending.insert(0, "MSA party details")
                     messages.error(
                         request,
-                        "Complete all required MSA details and document uploads before submitting.",
+                        "Complete these items before submitting: " + "; ".join(pending) + ".",
                     )
                     return redirect("envelope1:wizard", pk=submission.pk, step=6)
 
@@ -244,11 +260,17 @@ def envelope1_wizard(request: HttpRequest, pk: int, step: int) -> HttpResponse:
                     object_type="Envelope1Submission",
                     object_id=submission.pk,
                 )
-                # Confirmation shown as a SweetAlert on the next page load (not a toast)
-                request.session["envelope1_just_submitted"] = submission.pk
+                notify_event(
+                    users=staff_recipients(PROCUREMENT),
+                    dedupe_key=_staff_submitted_key(submission),
+                    title=f"New Envelope 1 submitted — {company.name}",
+                    body=f"Cycle {submission.cycle_number} is waiting for procurement evaluation.",
+                    link_url=reverse("staff:envelope1_detail", args=[submission.pk]),
+                    link_label="Review Envelope 1",
+                )
                 return redirect("envelope1:wizard", pk=submission.pk, step=6)
-        else:
-            pack_form = DocumentPackForm(doc_types=doc_types, existing=docs)
+        if request.method == "POST":
+            messages.error(request, "Please fix the highlighted fields.")
 
     return render(
         request,
@@ -260,12 +282,13 @@ def envelope1_wizard(request: HttpRequest, pk: int, step: int) -> HttpResponse:
             "step": step,
             "steps": STEP_META,
             "form": form,
-            "pack_form": pack_form,
+            "row_formset": row_formset,
             "docs": docs,
+            "item_help": {str(key.value): text for key, text in ITEM_HELP.items()},
+            "item_labels": dict(Envelope1Item.choices),
+            "lead_time_description": LEAD_TIME_DESCRIPTION,
             "editable": editable,
             "msa_ready": bool(submission.msa_party_saved_at),
-            "just_submitted": request.session.pop("envelope1_just_submitted", None)
-            == submission.pk,
             "pending_withdrawal": submission.withdrawal_requests.filter(
                 status=WithdrawalRequest.Status.PENDING
             ).first()
@@ -273,6 +296,46 @@ def envelope1_wizard(request: HttpRequest, pk: int, step: int) -> HttpResponse:
             else None,
         },
     )
+
+
+@login_required
+@require_http_methods(["POST"])
+def reopen_submission(request: HttpRequest, pk: int) -> HttpResponse:
+    """Pull a submitted (not yet locked) Envelope 1 back to Draft so the vendor can edit it."""
+    company = _vendor_company(request)
+    if not isinstance(company, Company):
+        return company
+    submission = Envelope1Submission.objects.filter(pk=pk, company=company).first()
+    if submission is None:
+        return redirect("envelope1:home")
+
+    with transaction.atomic():
+        # Row lock: Procurement may be locking this pack at the same moment
+        submission = Envelope1Submission.objects.select_for_update().get(pk=submission.pk)
+        if not submission.can_reopen:
+            messages.error(
+                request,
+                "Procurement has already started checking this Envelope 1. "
+                "Request a withdrawal to make changes.",
+            )
+            return redirect("envelope1:wizard", pk=submission.pk, step=submission.wizard_step or 1)
+        previous_status = submission.status
+        submission.status = Envelope1Submission.Status.DRAFT
+        submission.submitted_at = None
+        submission.save(update_fields=["status", "submitted_at", "updated_at"])
+        write_audit(
+            category=AuditLog.Category.COMPANY,
+            action="envelope1_reopened",
+            actor=request.user,
+            request=request,
+            changes={"cycle": submission.cycle_number, "from_status": previous_status},
+            object_type="Envelope1Submission",
+            object_id=submission.pk,
+        )
+        # Pack left the procurement queue — drop the stale "new submission" alert
+        Notification.objects.filter(dedupe_key=_staff_submitted_key(submission)).delete()
+    messages.info(request, "Envelope 1 is back in draft. Submit it again when your changes are done.")
+    return redirect("envelope1:wizard", pk=submission.pk, step=1)
 
 
 @login_required
@@ -294,6 +357,32 @@ def download_draft_msa(request: HttpRequest, pk: int) -> HttpResponse:
     write_audit(
         category=AuditLog.Category.DOCUMENT,
         action="envelope1_draft_msa_downloaded",
+        actor=request.user,
+        request=request,
+        changes={"cycle": submission.cycle_number},
+        object_type="Envelope1Submission",
+        object_id=submission.pk,
+    )
+    return response
+
+
+@login_required
+def download_no_advance_declaration(request: HttpRequest, pk: int) -> HttpResponse:
+    """1.4 template: pre-filled declaration the vendor signs and uploads back."""
+    company = _vendor_company(request)
+    if not isinstance(company, Company):
+        return company
+    submission = Envelope1Submission.objects.filter(pk=pk, company=company).first()
+    if submission is None:
+        return redirect("envelope1:home")
+    if not submission.msa_party_saved_at:
+        messages.error(request, "Save MSA party details before downloading the declaration.")
+        return redirect("envelope1:wizard", pk=submission.pk, step=1)
+    response = HttpResponse(build_no_advance_pdf(submission), content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="no-advance-payment-declaration.pdf"'
+    write_audit(
+        category=AuditLog.Category.DOCUMENT,
+        action="envelope1_no_advance_template_downloaded",
         actor=request.user,
         request=request,
         changes={"cycle": submission.cycle_number},
@@ -337,6 +426,14 @@ def withdrawal_request(request: HttpRequest, pk: int) -> HttpResponse:
                 changes={"cycle": submission.cycle_number},
                 object_type="WithdrawalRequest",
                 object_id=obj.pk,
+            )
+            notify_event(
+                users=staff_recipients(PROCUREMENT),
+                dedupe_key=f"staff-withdrawal-{obj.pk}",
+                title=f"Withdrawal requested — {company.name}",
+                body=f"Reason: {obj.reason}" if obj.reason else "The vendor asked to unlock their Envelope 1.",
+                link_url=reverse("staff:withdrawal_list"),
+                link_label="Review withdrawals",
             )
             messages.success(
                 request,

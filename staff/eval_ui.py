@@ -59,11 +59,6 @@ def read_only_fields(submission: Envelope1Submission, step: int) -> list[dict[st
             ("MSA Signatory Name", submission.msa_signatory_name, "pen", False),
             ("MSA Signatory Designation", submission.msa_signatory_designation, "briefcase", False),
         ]
-    elif step == 2:
-        effective = submission.msa_effective_date
-        spec = [
-            ("MSA Effective Date", effective.strftime("%d %b %Y") if effective else "", "calendar", False),
-        ]
     else:
         spec = []
     return [

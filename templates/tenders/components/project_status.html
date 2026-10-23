@@ -1,0 +1,8 @@
+{# Project lifecycle pill: Draft → Open → Closed → Awarded, or Cancelled. Pass vendor_view=True to hide "Awarded" (staff inform winners themselves). #}
+{% with s=project.display_status %}
+  {% if s == "Open" %}{% include "components/status_badge.html" with label=s tone="info" %}
+  {% elif s == "Closed" or s == "Awarded" and vendor_view %}{% include "components/status_badge.html" with label="Closed" tone="warning" %}
+  {% elif s == "Awarded" %}{% include "components/status_badge.html" with label=s tone="success" %}
+  {% elif s == "Cancelled" %}{% include "components/status_badge.html" with label=s tone="danger" %}
+  {% else %}{% include "components/status_badge.html" with label=s tone="neutral" %}{% endif %}
+{% endwith %}

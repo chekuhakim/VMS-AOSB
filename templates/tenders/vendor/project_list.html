@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="mb-6">
+    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">{{ company.name }}</p>
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900">Open projects</h1>
+    <p class="mt-1 text-sm text-slate-600">View the tender scope and submit a quotation for each RFQ before the closing time.</p>
+  </div>
+
+  <div class="grid gap-4 md:grid-cols-2">
+    {% for card in cards %}
+      {% with project=card.project %}
+      <a href="{% url 'tenders:project_detail' project.pk %}"
+         class="group flex flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition hover:border-brand/40 hover:shadow-md {% if card.issues %}opacity-75{% endif %}">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <p class="font-mono text-xs text-slate-500">{{ project.reference }}</p>
+            <p class="mt-0.5 font-semibold text-slate-900 group-hover:text-brand">{{ project.title }}</p>
+          </div>
+          {% if card.quoted %}
+            {% include "components/status_badge.html" with label="Quoted" tone="success" %}
+          {% elif card.issues %}
+            {% include "components/status_badge.html" with label="Not eligible" tone="neutral" %}
+          {% else %}
+            {% include "components/status_badge.html" with label="Open" tone="info" %}
+          {% endif %}
+        </div>
+        <p class="mt-2 line-clamp-2 text-sm text-slate-600">{{ project.scope }}</p>
+        <div class="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+          <span>Closes <strong class="text-slate-700">{{ project.closing_at|date:"d M Y, H:i" }}</strong></span>
+          <span>{{ project.rfqs.all|length }} RFQ{{ project.rfqs.all|length|pluralize }}</span>
+          <span>{{ project.start_date|date:"M Y" }} – {{ project.end_date|date:"M Y" }}</span>
+        </div>
+        {% for issue in card.issues %}<p class="mt-2 text-xs font-medium text-rose-600">{{ issue }}</p>{% endfor %}
+      </a>
+      {% endwith %}
+    {% empty %}
+      <div class="rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center text-sm text-slate-500 md:col-span-2">
+        No projects are open for quotation right now. You'll get a notification when a new one is published.
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}

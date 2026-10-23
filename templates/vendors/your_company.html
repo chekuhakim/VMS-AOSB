@@ -48,20 +48,22 @@
                   {% else %}
                     <a href="{% url 'vendors:wizard_step' company.pk 1 %}" class="font-medium text-slate-600 hover:text-brand">Edit</a>
                   {% endif %}
-                  <form
-                    method="post"
-                    action="{% url 'vendors:delete_company' company.pk %}"
-                    class="js-delete-company-form inline"
-                    data-company-name="{{ company.name }}"
-                  >
-                    {% csrf_token %}
-                    <button
-                      type="submit"
-                      class="font-medium text-rose-600 hover:text-rose-800"
+                  {% if company.registration_status == "draft" %}
+                    <form
+                      method="post"
+                      action="{% url 'vendors:delete_company' company.pk %}"
+                      class="js-delete-company-form inline"
+                      data-company-name="{{ company.name }}"
                     >
-                      Delete
-                    </button>
-                  </form>
+                      {% csrf_token %}
+                      <button
+                        type="submit"
+                        class="font-medium text-rose-600 hover:text-rose-800"
+                      >
+                        Delete
+                      </button>
+                    </form>
+                  {% endif %}
                 </div>
               </td>
             </tr>

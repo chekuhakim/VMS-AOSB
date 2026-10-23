@@ -1,0 +1,21 @@
+{% extends "account/email/base_message.html" %}
+
+{% block title %}{{ note.title }}{% endblock %}
+
+{% block content %}
+  <p style="margin:0 0 8px;font-size:17px;font-weight:700;line-height:1.4;color:#0f172a;">{{ note.title }}</p>
+  {% if note.body %}
+    <p style="margin:0 0 20px;font-size:15px;line-height:1.55;color:#334155;white-space:pre-line;">{{ note.body }}</p>
+  {% endif %}
+  {% if link %}
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 8px;">
+      <tr>
+        <td style="border-radius:12px;background-color:#FF6F00;">
+          <a href="{{ link }}" style="display:inline-block;padding:12px 24px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">
+            {{ note.link_label|default:"Open in VMS" }}
+          </a>
+        </td>
+      </tr>
+    </table>
+  {% endif %}
+{% endblock %}

@@ -25,9 +25,49 @@ def build_draft_msa_pdf(submission: Envelope1Submission) -> bytes:
         "Sign and upload the completed MSA in Envelope 1 Step 2.",
         "This is not a legally binding executed agreement until signed.",
     ]
+    return _render_text_pdf(lines)
+
+
+def build_no_advance_pdf(submission: Envelope1Submission) -> bytes:
+    """Pre-filled 1.4 No Advance Payment Declaration for the vendor to sign and upload."""
+    company = submission.legal_name or "—"
+    lines = [
+        "ALPHA ORANGE SDN BHD — NO ADVANCE PAYMENT DECLARATION",
+        "",
+        f"Company: {company}",
+        f"SSM registration: {submission.ssm_registration_number or '—'}",
+        f"Address: {(submission.principal_address or '—').replace(chr(10), ' ')}",
+        "",
+        f"I, {submission.msa_signatory_name or '____________________'}, "
+        f"{submission.msa_signatory_designation or '____________________'},",
+        f"for and on behalf of {company}, declare that:",
+        "",
+        "1. The company does not require any advance payment from Alpha Orange Sdn Bhd",
+        "   for works or supplies carried out under the Master Service Agreement.",
+        "2. The company has sufficient working capital and/or credit facilities to",
+        "   mobilise and complete each work order before progress claims are paid.",
+        "3. Payment will only be claimed according to the agreed payment terms.",
+        "",
+        "",
+        "Signature: ______________________________",
+        "",
+        f"Name: {submission.msa_signatory_name or '______________________________'}",
+        f"Designation: {submission.msa_signatory_designation or '______________________________'}",
+        "Date: ______________________________",
+        "Company stamp:",
+        "",
+        "",
+        "Sign, stamp, and upload this declaration in Envelope 1, item 1.4.",
+    ]
+    return _render_text_pdf(lines)
+
+
+def _render_text_pdf(lines: list[str]) -> bytes:
+    """Single-page Helvetica text PDF (no external PDF lib)."""
     # Escape PDF literal string specials
     safe = []
     for line in lines:
+        line = line.replace("—", "-")  # Helvetica standard encoding has no em dash
         safe.append(line.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)"))
 
     content_lines = ["BT", "/F1 10 Tf", "50 750 Td", "14 TL"]

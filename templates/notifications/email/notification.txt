@@ -1,0 +1,10 @@
+{% autoescape off %}{{ note.title }}
+{% if note.body %}
+{{ note.body }}
+{% endif %}{% if link %}
+{{ note.link_label|default:"Open in VMS" }}: {{ link }}
+{% endif %}
+-- 
+{{ current_site.name }} · Alpha Orange Sdn Bhd
+This is an automated message.
+{% endautoescape %}

@@ -89,7 +89,7 @@
 
           <div>
             <label for="{{ form.ssm_pdf.id_for_label }}" class="block text-sm font-medium text-slate-700">
-              {{ form.ssm_pdf.label }}{% if form.ssm_pdf.field.required %} *{% endif %}
+              {{ form.ssm_pdf.label }}
             </label>
             {{ form.ssm_pdf }}
             {% if has_pdf.ssm %}
@@ -133,15 +133,8 @@
             </div>
           </div>
           <div>
-            <p class="block text-sm font-medium text-slate-700">{{ form.cidb_categories_input.label }}</p>
-            <div class="mt-2 space-y-2">{{ form.cidb_categories_input }}</div>
-            {% if form.cidb_categories_input.errors %}
-              <p class="mt-1 text-xs text-rose-600">{{ form.cidb_categories_input.errors.0 }}</p>
-            {% endif %}
-          </div>
-          <div>
             <label for="{{ form.cidb_pdf.id_for_label }}" class="block text-sm font-medium text-slate-700">
-              {{ form.cidb_pdf.label }}{% if form.cidb_pdf.field.required %} *{% endif %}
+              {{ form.cidb_pdf.label }}
             </label>
             {{ form.cidb_pdf }}
             {% if has_pdf.cidb %}
@@ -175,15 +168,6 @@
           >
             <div class="grid gap-5 sm:grid-cols-2">
               <div>
-                <label for="{{ form.st_contractor_class.id_for_label }}" class="block text-sm font-medium text-slate-700">
-                  {{ form.st_contractor_class.label }}
-                </label>
-                {{ form.st_contractor_class }}
-                {% if form.st_contractor_class.errors %}
-                  <p class="mt-1 text-xs text-rose-600">{{ form.st_contractor_class.errors.0 }}</p>
-                {% endif %}
-              </div>
-              <div>
                 <label for="{{ form.st_license_number.id_for_label }}" class="block text-sm font-medium text-slate-700">
                   {{ form.st_license_number.label }}
                 </label>
@@ -199,15 +183,6 @@
                 {{ form.st_certificate_expiry }}
                 {% if form.st_certificate_expiry.errors %}
                   <p class="mt-1 text-xs text-rose-600">{{ form.st_certificate_expiry.errors.0 }}</p>
-                {% endif %}
-              </div>
-              <div>
-                <label for="{{ form.chargeman_name.id_for_label }}" class="block text-sm font-medium text-slate-700">
-                  {{ form.chargeman_name.label }}
-                </label>
-                {{ form.chargeman_name }}
-                {% if form.chargeman_name.errors %}
-                  <p class="mt-1 text-xs text-rose-600">{{ form.chargeman_name.errors.0 }}</p>
                 {% endif %}
               </div>
             </div>
@@ -227,41 +202,25 @@
         </div>
 
       {% elif step == 5 %}
-        <div class="grid gap-5 sm:grid-cols-2">
-          {% for field in form %}
-            <div>
-              <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-slate-700">
-                {{ field.label }}
-              </label>
-              {{ field }}
-              {% if field.errors %}<p class="mt-1 text-xs text-rose-600">{{ field.errors.0 }}</p>{% endif %}
+        <div class="space-y-6">
+          <div class="grid gap-5 sm:grid-cols-2">
+            {% include "vendors/components/wizard_field.html" with field=form.lhdn_tin %}
+          </div>
+          <fieldset class="rounded-xl border border-slate-200 bg-cream/60 p-4 sm:p-5">
+            <legend class="px-1 text-sm font-semibold text-slate-900">Bank account for payment</legend>
+            <div class="mt-2 grid gap-5 sm:grid-cols-2">
+              {% include "vendors/components/wizard_field.html" with field=form.bank_name %}
+              <div id="bank-other-wrap" class="{% if form.bank_name.value != 'other' %}hidden{% endif %}">
+                {% include "vendors/components/wizard_field.html" with field=form.bank_name_other %}
+              </div>
+              {% include "vendors/components/wizard_field.html" with field=form.bank_account_number %}
+              {% include "vendors/components/wizard_field.html" with field=form.bank_account_name %}
             </div>
-          {% endfor %}
+          </fieldset>
         </div>
 
       {% elif step == 6 %}
         <div class="space-y-6">
-          <div class="grid gap-5 sm:grid-cols-2">
-            <div>
-              <label for="{{ form.hse_representative_name.id_for_label }}" class="block text-sm font-medium text-slate-700">
-                {{ form.hse_representative_name.label }}
-              </label>
-              {{ form.hse_representative_name }}
-              {% if form.hse_representative_name.errors %}
-                <p class="mt-1 text-xs text-rose-600">{{ form.hse_representative_name.errors.0 }}</p>
-              {% endif %}
-            </div>
-            <div>
-              <label for="{{ form.public_liability_coverage.id_for_label }}" class="block text-sm font-medium text-slate-700">
-                {{ form.public_liability_coverage.label }}
-              </label>
-              {{ form.public_liability_coverage }}
-              {% if form.public_liability_coverage.errors %}
-                <p class="mt-1 text-xs text-rose-600">{{ form.public_liability_coverage.errors.0 }}</p>
-              {% endif %}
-            </div>
-          </div>
-
           <section class="overflow-hidden rounded-2xl border border-slate-200">
             <div class="border-b border-slate-200 bg-cream px-5 py-3">
               <h3 class="text-sm font-semibold text-slate-900">Profile summary</h3>
@@ -295,9 +254,7 @@
                     {{ company.cidb_registration_number|default:"—" }}
                     · Grade {{ company.cidb_grade|default:"—" }}
                   </dd>
-                  <dd class="text-xs text-slate-500">
-                    Categories: {% if company.cidb_categories %}{{ company.cidb_categories|join:", " }}{% else %}—{% endif %}
-                  </dd>
+                  <dd class="text-xs text-slate-500">Expiry {{ company.cidb_certificate_expiry|date:"d M Y"|default:"—" }}</dd>
                 </div>
                 <div>
                   <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Electrical / ST</dt>
@@ -312,9 +269,10 @@
                   </dd>
                 </div>
                 <div>
-                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">LHDN / Banking</dt>
+                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">LHDN / Bank</dt>
                   <dd class="mt-0.5 text-sm text-slate-800">TIN {{ company.lhdn_tin|default:"—" }}</dd>
-                  <dd class="text-xs text-slate-500">MyInvois: {{ company.get_myinvois_readiness_display|default:"—" }}</dd>
+                  <dd class="text-sm text-slate-800">{{ company.bank_display|default:"—" }} · {{ company.bank_account_number|default:"—" }}</dd>
+                  <dd class="text-xs text-slate-500">{{ company.bank_account_name|default:"—" }}</dd>
                 </div>
               </div>
             </dl>
@@ -436,13 +394,7 @@
       var stWrap = document.getElementById('st-details-wrap')
       if (stWrap) {
         var stPdfOptional = {{ has_pdf.st|yesno:"true,false" }}
-        var stFieldIds = [
-          'id_st_contractor_class',
-          'id_st_license_number',
-          'id_st_certificate_expiry',
-          'id_chargeman_name',
-          'id_st_pdf',
-        ]
+        var stFieldIds = ['id_st_license_number', 'id_st_certificate_expiry', 'id_st_pdf']
         function syncSt() {
           var checked = document.querySelector('input[name="includes_electrical_work"]:checked')
           var show = checked && (checked.value === 'True' || checked.value === 'true')
@@ -463,18 +415,21 @@
         syncSt()
       }
 
-      function prepareSubmit() {
-        var catBoxes = form.querySelectorAll('input[name="cidb_categories_input"]')
-        if (catBoxes.length) {
-          var anyCat = false
-          catBoxes.forEach(function (box) {
-            if (box.checked) anyCat = true
-            box.setCustomValidity('')
-          })
-          if (!anyCat) {
-            catBoxes[0].setCustomValidity('Select at least one CIDB category.')
-          }
+      var bankSelect = document.getElementById('id_bank_name')
+      var bankOtherWrap = document.getElementById('bank-other-wrap')
+      var bankOtherInput = document.getElementById('id_bank_name_other')
+      if (bankSelect && bankOtherWrap) {
+        function syncBank() {
+          var other = bankSelect.value === 'other'
+          bankOtherWrap.classList.toggle('hidden', !other)
+          setRequired(bankOtherInput, other)
+          if (!other && bankOtherInput) bankOtherInput.value = ''
         }
+        bankSelect.addEventListener('change', syncBank)
+        syncBank()
+      }
+
+      function prepareSubmit() {
         gateExpiryFields()
         return form.checkValidity()
       }

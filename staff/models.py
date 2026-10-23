@@ -5,11 +5,11 @@ from __future__ import annotations
 from django.conf import settings
 from django.db import models
 
-from envelope1.models import Envelope1Document, Envelope1Submission
+from envelope1.models import Envelope1Item, Envelope1Submission
 
 
 class Envelope1ItemEvaluation(models.Model):
-    """Procurement pass/fail for one required Envelope 1 document type."""
+    """Procurement pass/fail for one Envelope 1 checklist item (keyed by Envelope1Item)."""
 
     class Result(models.TextChoices):
         PENDING = "pending", "Pending"
@@ -23,7 +23,7 @@ class Envelope1ItemEvaluation(models.Model):
     )
     doc_type = models.CharField(
         max_length=40,
-        choices=Envelope1Document.DocType.choices,
+        choices=Envelope1Item.choices,
         db_index=True,
     )
     result = models.CharField(

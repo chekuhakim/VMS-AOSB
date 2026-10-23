@@ -31,4 +31,18 @@
       </div>
     {% endfor %}
   </div>
+
+  <div class="mb-4 mt-10">
+    <h2 class="text-lg font-bold tracking-tight text-slate-900">Tender awards</h2>
+    <p class="mt-1 text-sm text-slate-600">Winning quotations recommended by Procurement.</p>
+  </div>
+  <div class="space-y-4">
+    {% for award in awards %}
+      {% include "tenders/staff/components/award_decision_card.html" with award=award next_url=request.path %}
+    {% empty %}
+      <div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+        No tender awards awaiting director approval.
+      </div>
+    {% endfor %}
+  </div>
 {% endblock %}

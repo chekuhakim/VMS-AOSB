@@ -32,7 +32,7 @@ def evaluate_company_registration(company: Company) -> EvaluationResult:
     """Return approve/reject for a fully filled registration.
 
     Compliance gates (ISO-aligned completeness + expiry):
-    - Steps 1–3, 5–6 required always
+    - Steps 1–3, 5 and the step 6 declaration required always
     - Step 4 required only when includes_electrical_work is True
     - Required PDFs present; enterprise SSM + CIDB (+ ST if electrical) not expired
     - Declaration accepted with a stored text version
@@ -60,7 +60,6 @@ def evaluate_company_registration(company: Company) -> EvaluationResult:
     if not (
         company.cidb_registration_number
         and company.cidb_grade
-        and company.cidb_categories
         and company.cidb_certificate_expiry
     ):
         reasons.append("incomplete_cidb")
@@ -74,12 +73,7 @@ def evaluate_company_registration(company: Company) -> EvaluationResult:
     if company.includes_electrical_work is None:
         reasons.append("missing_electrical_scope_answer")
     elif company.includes_electrical_work:
-        if not (
-            company.st_contractor_class
-            and company.st_license_number
-            and company.st_certificate_expiry
-            and company.chargeman_name
-        ):
+        if not (company.st_license_number and company.st_certificate_expiry):
             reasons.append("incomplete_st_licensing")
         st_doc = _latest_doc(company, CompanyDocument.DocType.ST)
         if st_doc is None:
@@ -88,17 +82,18 @@ def evaluate_company_registration(company: Company) -> EvaluationResult:
             reasons.append("st_certificate_expired")
 
     # Step 5
+    bank_named = company.bank_name and (
+        company.bank_name != Company.Bank.OTHER or company.bank_name_other
+    )
     if not (
         company.lhdn_tin
-        and company.sst_registration_number
-        and company.myinvois_readiness
-        and company.bank_account_for_payment
+        and bank_named
+        and company.bank_account_number
+        and company.bank_account_name
     ):
         reasons.append("incomplete_lhdn")
 
     # Step 6
-    if not (company.hse_representative_name and company.public_liability_coverage):
-        reasons.append("incomplete_hse")
     if not company.declaration_accepted or not company.declaration_text_version:
         reasons.append("declaration_missing")
 
@@ -118,7 +113,8 @@ REASON_LABELS: dict[str, str] = {
     "incomplete_st_licensing": "ST licensing details are incomplete.",
     "missing_st_document": "ST license PDF is missing.",
     "st_certificate_expired": "ST license is expired.",
-    "incomplete_lhdn": "LHDN / e-invoice details are incomplete.",
+    "incomplete_lhdn": "LHDN / bank details are incomplete.",
+    # Retired check — kept so older rejection notes still display
     "incomplete_hse": "HSE details are incomplete.",
     "declaration_missing": "Declaration was not accepted.",
 }

@@ -19,7 +19,7 @@
 
     {# Progress stages #}
     <section aria-label="Onboarding progress">
-      <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div class="grid gap-3 md:grid-cols-3">
         {% for stage in progress_stages %}
           {% if stage.locked or not stage.href %}
             <article

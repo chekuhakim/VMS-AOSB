@@ -45,11 +45,29 @@ class Envelope1Submission(models.Model):
     msa_signatory_designation = models.CharField(max_length=150, blank=True)
     msa_party_saved_at = models.DateTimeField(null=True, blank=True)
 
-    # --- Step 2: Signed MSA ---
-    msa_effective_date = models.DateField(null=True, blank=True)
+    # --- Step 3: Financials (None = not answered yet) ---
+    has_bank_facility = models.BooleanField(null=True, blank=True)
+    has_supplier_credit = models.BooleanField(null=True, blank=True)
 
-    # Lock when procurement starts evaluating (Phase 4); vendors may still edit
-    # submitted packs until locked_at is set.
+    # --- Step 4: Logistics ---
+    sabah_interest = models.BooleanField(null=True, blank=True)
+    lead_time_sea_freight_days = models.PositiveSmallIntegerField(null=True, blank=True)
+    lead_time_semenanjung_days = models.PositiveSmallIntegerField(null=True, blank=True)
+
+    # --- Step 5: Quality, safety & governance ---
+    site_supervisor_name = models.CharField(max_length=150, blank=True)
+    accepts_timestamped_reporting = models.BooleanField(default=False)
+    accepts_metmalaysia_eot = models.BooleanField(default=False)
+    declarations_accepted_at = models.DateTimeField(null=True, blank=True)
+    has_quality_plan = models.BooleanField(null=True, blank=True)
+    has_hse_plan = models.BooleanField(null=True, blank=True)
+
+    # --- Step 6: Track record ---
+    has_past_projects = models.BooleanField(null=True, blank=True)
+    has_client_references = models.BooleanField(null=True, blank=True)
+
+    # Lock when procurement starts evaluating (Phase 4). Before that, a submitted
+    # pack is reopened to Draft by the vendor (envelope1:reopen) before editing.
     locked_at = models.DateTimeField(null=True, blank=True)
     locked_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -84,10 +102,13 @@ class Envelope1Submission(models.Model):
 
     @property
     def is_editable(self) -> bool:
-        if self.is_locked:
-            return False
-        return self.status in {
-            self.Status.DRAFT,
+        # Only drafts take edits, so Procurement never evaluates a half-edited pack
+        return not self.is_locked and self.status == self.Status.DRAFT
+
+    @property
+    def can_reopen(self) -> bool:
+        """Submitted but not yet locked by Procurement — vendor may pull it back to Draft."""
+        return not self.is_locked and self.status in {
             self.Status.SUBMITTED,
             self.Status.PENDING_EVALUATION,
         }
@@ -98,23 +119,25 @@ class Envelope1Document(models.Model):
 
     class DocType(models.TextChoices):
         SIGNED_MSA = "signed_msa", "Signed MSA"
-        AUDITED_FINANCIALS = "audited_financials", "1.1 Audited Financial Statements (last 2 years)"
+        AUDITED_FINANCIALS = "audited_financials", "1.1 Financial statement"
         BANK_FACILITY = "bank_facility", "1.2 Bank credit facility / overdraft"
         SUPPLIER_CREDIT = "supplier_credit", "1.3 Supplier credit terms proof"
         NO_ADVANCE = "no_advance", "1.4 No advance payment declaration"
         CAR_INSURANCE = "car_insurance", "1.5 Insurance — Contractor's All Risk (CAR)"
-        FREIGHT_FORWARDER = "freight_forwarder", "2.1 Named freight forwarder"
-        PRIMARY_SUPPLIERS = "primary_suppliers", "2.2 Primary Supplier List"
-        SABAH_BACKUP = "sabah_backup", "2.3 Local Sabah backup suppliers"
-        LEAD_TIME_MATRIX = "lead_time_matrix", "2.4 Logistic lead-time matrix"
-        SITE_SUPERVISOR_CV = "site_supervisor_cv", "3.1 Dedicated site supervisor CV"
-        TIMESTAMPED_REPORTING = "timestamped_reporting", "3.2 Timestamped reporting agreement"
-        METMALAYSIA_EOT = "metmalaysia_eot", "3.3 MetMalaysia EOT agreement"
         QUALITY_PLAN = "quality_plan", "3.4 Quality management plan"
         HSE_PLAN = "hse_plan", "3.5 Health & safety (HSE) plan"
-        PAST_PROJECTS = "past_projects", "4.1 Past Project List"
-        CLIENT_REFERENCES = "client_references", "4.2 Client References"
-        MANPOWER_MATRIX = "manpower_matrix", "4.3 Specialized manpower matrix"
+        PAST_PROJECTS = "past_projects", "4.1 Past project document"
+        CLIENT_REFERENCES = "client_references", "4.2 Client references"
+        ORG_CHART = "org_chart", "4.3 Organisation chart"
+        # Legacy upload types from the pre-questionnaire checklist; kept so old files still display
+        FREIGHT_FORWARDER = "freight_forwarder", "Named freight forwarder (legacy)"
+        PRIMARY_SUPPLIERS = "primary_suppliers", "Primary supplier list (legacy)"
+        SABAH_BACKUP = "sabah_backup", "Local Sabah backup suppliers (legacy)"
+        LEAD_TIME_MATRIX = "lead_time_matrix", "Logistic lead-time matrix (legacy)"
+        SITE_SUPERVISOR_CV = "site_supervisor_cv", "Site supervisor CV (legacy)"
+        TIMESTAMPED_REPORTING = "timestamped_reporting", "Timestamped reporting agreement (legacy)"
+        METMALAYSIA_EOT = "metmalaysia_eot", "MetMalaysia EOT agreement (legacy)"
+        MANPOWER_MATRIX = "manpower_matrix", "Specialized manpower matrix (legacy)"
 
     submission = models.ForeignKey(
         Envelope1Submission,
@@ -142,6 +165,92 @@ class Envelope1Document(models.Model):
 
     def __str__(self) -> str:
         return f"E1:{self.submission_id}:{self.doc_type}:v{self.version}"
+
+
+class Envelope1Item(models.TextChoices):
+    """Checklist items Procurement passes/fails (keys stored on Envelope1ItemEvaluation)."""
+
+    SIGNED_MSA = "signed_msa", "Signed MSA"
+    FINANCIAL_STATEMENTS = "audited_financials", "1.1 Financial statements (last 2 years)"
+    BANK_FACILITY = "bank_facility", "1.2 Bank credit facility / overdraft"
+    SUPPLIER_CREDIT = "supplier_credit", "1.3 Supplier credit terms"
+    NO_ADVANCE = "no_advance", "1.4 No advance payment declaration"
+    CAR_INSURANCE = "car_insurance", "1.5 Insurance — Contractor's All Risk (CAR)"
+    SABAH_INTEREST = "sabah_interest", "2.1 Interest in working in Sabah"
+    PRIMARY_SUPPLIERS = "primary_suppliers", "2.2 Primary suppliers"
+    LEAD_TIME = "lead_time", "2.3 Logistic lead time"
+    SITE_SUPERVISOR = "site_supervisor", "3.1 Dedicated site supervisor"
+    TIMESTAMPED_REPORTING = "timestamped_reporting", "3.2 Timestamped reporting declaration"
+    METMALAYSIA_EOT = "metmalaysia_eot", "3.3 MetMalaysia EOT declaration"
+    QUALITY_PLAN = "quality_plan", "3.4 Quality management plan"
+    HSE_PLAN = "hse_plan", "3.5 Health & safety (HSE) plan"
+    PAST_PROJECTS = "past_projects", "4.1 Past project list"
+    CLIENT_REFERENCES = "client_references", "4.2 Client references"
+    ORG_CHART = "org_chart", "4.3 Organisation chart"
+
+
+class FinancialStatement(models.Model):
+    """1.1 row: one financial statement PDF for one financial year."""
+
+    submission = models.ForeignKey(
+        Envelope1Submission,
+        on_delete=models.CASCADE,
+        related_name="financial_statements",
+    )
+    year = models.PositiveSmallIntegerField()
+    document = models.ForeignKey(
+        Envelope1Document,
+        on_delete=models.PROTECT,
+        related_name="+",
+    )
+
+    class Meta:
+        ordering = ["-year", "pk"]
+
+    def __str__(self) -> str:
+        return f"E1 {self.submission_id} FS {self.year}"
+
+
+class PrimarySupplier(models.Model):
+    """2.2 row: which supplier provides which structure."""
+
+    submission = models.ForeignKey(
+        Envelope1Submission,
+        on_delete=models.CASCADE,
+        related_name="primary_suppliers",
+    )
+    structure = models.CharField(max_length=200)
+    supplier_name = models.CharField(max_length=200)
+    position = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["position", "pk"]
+
+    def __str__(self) -> str:
+        return f"{self.structure} — {self.supplier_name}"
+
+
+class PastProject(models.Model):
+    """4.1 row: past project name with its supporting PDF."""
+
+    submission = models.ForeignKey(
+        Envelope1Submission,
+        on_delete=models.CASCADE,
+        related_name="past_projects",
+    )
+    project_name = models.CharField(max_length=255)
+    document = models.ForeignKey(
+        Envelope1Document,
+        on_delete=models.PROTECT,
+        related_name="+",
+    )
+    position = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["position", "pk"]
+
+    def __str__(self) -> str:
+        return self.project_name
 
 
 class WithdrawalRequest(models.Model):

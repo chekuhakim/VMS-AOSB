@@ -22,7 +22,7 @@ def design_system(request) -> dict[str, Any]:  # type: ignore[no-untyped-def]
             {"label": "Approvals", "url_name": "staff:approval_queue", "icon": "check"},
             {"label": "Withdrawals", "url_name": "staff:withdrawal_list", "icon": "unlock"},
             {"label": "Audit log", "url_name": "staff:audit_log", "icon": "list"},
-            {"label": "Tender", "url_name": "core:tender", "icon": "briefcase"},
+            {"label": "Tender", "url_name": "tenders:tender_list", "icon": "briefcase"},
         ]
     else:
         nav_items = [
@@ -31,8 +31,8 @@ def design_system(request) -> dict[str, Any]:  # type: ignore[no-untyped-def]
             {"label": "Your company", "url_name": "vendors:your_company", "icon": "building"},
             {"label": "Envelope 1", "url_name": "envelope1:home", "icon": "file"},
             {"label": "Document vault", "url_name": "envelope1:vault", "icon": "folder"},
-            {"label": "Project", "url_name": "core:project", "icon": "briefcase"},
-            {"label": "Your bid", "url_name": "core:your_bid", "icon": "tag"},
+            {"label": "Project", "url_name": "tenders:project_list", "icon": "briefcase"},
+            {"label": "Your bid", "url_name": "tenders:your_bids", "icon": "tag"},
         ]
 
     companies: list[Company] = []

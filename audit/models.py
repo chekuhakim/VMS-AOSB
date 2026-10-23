@@ -8,8 +8,16 @@ from django.conf import settings
 from django.db import models
 
 
+class AuditLogQuerySet(models.QuerySet):
+    def delete(self) -> tuple[int, dict[str, int]]:  # type: ignore[override]
+        # Compliance: bulk deletes bypass AuditLog.delete(), so block them here too
+        raise ValueError("AuditLog rows are append-only and cannot be deleted.")
+
+
 class AuditLog(models.Model):
     """Append-only event log. Rows must never be updated or deleted via the UI."""
+
+    objects = AuditLogQuerySet.as_manager()
 
     class Category(models.TextChoices):
         AUTH = "auth", "Auth"

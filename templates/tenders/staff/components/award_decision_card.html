@@ -1,0 +1,27 @@
+{# Pending award recommendation with Director approve / reject controls #}
+<div class="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Awaiting director approval</p>
+      <p class="mt-1 font-semibold text-slate-900">{{ award.rfq.code }} · {{ award.rfq.title }}</p>
+      <p class="text-xs text-slate-500">{{ award.rfq.project.reference }} · {{ award.rfq.project.title }}</p>
+      <p class="mt-2 text-sm text-slate-700">
+        Recommended: <strong>{{ award.quotation.company.name }}</strong> at
+        <strong>RM {{ award.quotation.total_price|floatformat:"2g" }}</strong>
+        (est. handover {{ award.quotation.handover_date|date:"d M Y"|default:"not given" }})
+      </p>
+      <p class="mt-1 text-sm text-slate-600"><span class="font-medium">Justification:</span> {{ award.recommendation_note }}</p>
+      <p class="mt-1 text-xs text-slate-400">by {{ award.recommended_by|default:"—" }} · {{ award.recommended_at|date:"d M Y H:i" }}</p>
+    </div>
+    <a href="{% url 'tenders:tender_detail' award.rfq.project_id %}" class="shrink-0 text-sm font-medium text-brand hover:text-brand-700">Compare quotations</a>
+  </div>
+  {% if can_approve %}
+    <form method="post" action="{% url 'tenders:award_decide' award.pk %}" class="mt-4 flex flex-col gap-2 sm:flex-row">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next_url }}" />
+      <input type="text" name="note" placeholder="Note (required to reject)" class="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+      <button type="submit" name="decision" value="approve" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Approve award</button>
+      <button type="submit" name="decision" value="reject" class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700">Reject</button>
+    </form>
+  {% endif %}
+</div>

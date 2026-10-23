@@ -15,7 +15,6 @@ UNIQUE_IDENTIFIER_FIELDS: dict[str, str] = {
     "cidb_registration_number": "CIDB Registration Number",
     "st_license_number": "ST License Number",
     "lhdn_tin": "LHDN TIN",
-    "sst_registration_number": "SST Registration Number",
 }
 
 
@@ -40,10 +39,26 @@ class Company(models.Model):
         APPROVED = "approved", "Approved"
         REJECTED = "rejected", "Rejected"
 
-    class MyInvoisReadiness(models.TextChoices):
-        YES = "yes", "Ready"
-        NO = "no", "Not ready"
-        PARTIAL = "partial", "In progress"
+    class Bank(models.TextChoices):
+        MAYBANK = "maybank", "Maybank"
+        CIMB = "cimb", "CIMB Bank"
+        PUBLIC_BANK = "public_bank", "Public Bank"
+        RHB = "rhb", "RHB Bank"
+        HONG_LEONG = "hong_leong", "Hong Leong Bank"
+        AMBANK = "ambank", "AmBank"
+        BANK_ISLAM = "bank_islam", "Bank Islam"
+        BANK_RAKYAT = "bank_rakyat", "Bank Rakyat"
+        BSN = "bsn", "Bank Simpanan Nasional (BSN)"
+        AFFIN = "affin", "Affin Bank"
+        ALLIANCE = "alliance", "Alliance Bank"
+        OCBC = "ocbc", "OCBC Bank"
+        UOB = "uob", "UOB Bank"
+        HSBC = "hsbc", "HSBC Bank"
+        STANDARD_CHARTERED = "standard_chartered", "Standard Chartered"
+        AGROBANK = "agrobank", "Agrobank"
+        MUAMALAT = "muamalat", "Bank Muamalat"
+        MBSB = "mbsb", "MBSB Bank"
+        OTHER = "other", "Other"
 
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -71,33 +86,21 @@ class Company(models.Model):
     # --- Step 3: CIDB ---
     cidb_registration_number = models.CharField(max_length=50, blank=True)
     cidb_grade = models.CharField(max_length=20, blank=True)
-    cidb_categories = models.JSONField(
-        default=list,
-        blank=True,
-        help_text="List of selected CIDB registered categories.",
-    )
     cidb_certificate_expiry = models.DateField(null=True, blank=True)
 
     # --- Step 4: ST Licensing (optional / conditional) ---
     includes_electrical_work = models.BooleanField(null=True, blank=True)
-    st_contractor_class = models.CharField(max_length=50, blank=True)
     st_license_number = models.CharField(max_length=50, blank=True)
     st_certificate_expiry = models.DateField(null=True, blank=True)
-    chargeman_name = models.CharField(max_length=150, blank=True)
 
-    # --- Step 5: LHDN & e-invoice ---
+    # --- Step 5: LHDN & bank details ---
     lhdn_tin = models.CharField(max_length=50, blank=True)
-    sst_registration_number = models.CharField(max_length=50, blank=True)
-    myinvois_readiness = models.CharField(
-        max_length=20,
-        choices=MyInvoisReadiness.choices,
-        blank=True,
-    )
-    bank_account_for_payment = models.CharField(max_length=120, blank=True)
+    bank_name = models.CharField(max_length=30, choices=Bank.choices, blank=True)
+    bank_name_other = models.CharField(max_length=120, blank=True)
+    bank_account_number = models.CharField(max_length=20, blank=True)
+    bank_account_name = models.CharField(max_length=150, blank=True)
 
-    # --- Step 6: HSE + declaration ---
-    hse_representative_name = models.CharField(max_length=150, blank=True)
-    public_liability_coverage = models.CharField(max_length=120, blank=True)
+    # --- Step 6: Declaration ---
     declaration_accepted = models.BooleanField(default=False)
     declaration_text_version = models.CharField(max_length=20, blank=True)
     declaration_accepted_at = models.DateTimeField(null=True, blank=True)
@@ -145,6 +148,12 @@ class Company(models.Model):
     def is_editable(self) -> bool:
         """Vendors may edit drafts and re-submit rejected/approved records."""
         return True
+
+    @property
+    def bank_display(self) -> str:
+        if self.bank_name == self.Bank.OTHER:
+            return self.bank_name_other
+        return self.get_bank_name_display() if self.bank_name else ""
 
 
 class CompanyDocument(models.Model):

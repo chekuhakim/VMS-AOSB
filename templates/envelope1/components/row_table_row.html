@@ -1,0 +1,32 @@
+{# One row of row_table.html. Expects `row` (form; may carry `existing_row` with a saved `document`). #}
+<tr data-row class="align-top {% if row.DELETE.value %}hidden{% endif %}">
+  {% for field in row.visible_fields %}
+    {% if field.name != "DELETE" %}
+      <td class="px-3 py-2.5">
+        {% if forloop.first %}{% for hidden in row.hidden_fields %}{{ hidden }}{% endfor %}{% endif %}
+        {% if field.name == "pdf" and row.existing_row %}
+          <a href="{% url 'envelope1:view_envelope1_document' row.existing_row.document.pk %}" target="_blank" rel="noopener"
+             class="mb-1.5 flex max-w-[16rem] items-center gap-1.5 truncate text-xs font-semibold text-emerald-700 hover:underline"
+             title="{{ row.existing_row.document.original_filename }}">
+            <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span class="truncate">{{ row.existing_row.document.original_filename|default:"Uploaded PDF" }}</span>
+          </a>
+        {% endif %}
+        {{ field }}
+        {% if field.name == "pdf" and row.existing_row %}<p class="mt-1 text-[11px] text-slate-400">Choose a file only to replace it.</p>{% endif %}
+        {% if field.errors %}<p class="mt-1 text-xs text-rose-600">{{ field.errors.0 }}</p>{% endif %}
+      </td>
+    {% endif %}
+  {% endfor %}
+  <td class="px-2 py-2.5 text-right">
+    <input type="checkbox" name="{{ row.DELETE.html_name }}" class="hidden" data-delete {% if row.DELETE.value %}checked{% endif %} />
+    <button type="button" data-remove-row aria-label="Remove row"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-rose-50 hover:text-rose-600">
+      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </td>
+</tr>

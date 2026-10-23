@@ -1,0 +1,17 @@
+{# RFQ work-package form, used inline on the project page and on the edit page #}
+<form method="post" action="{{ action_url }}" enctype="multipart/form-data" class="space-y-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+  {% csrf_token %}
+  {% include "tenders/components/field.html" with field=form.title %}
+  {% include "tenders/components/field.html" with field=form.description %}
+  <div class="grid gap-4 sm:grid-cols-2">
+    {% include "tenders/components/field.html" with field=form.quantity %}
+    {% include "tenders/components/field.html" with field=form.unit %}
+  </div>
+  {% include "tenders/components/field.html" with field=form.document %}
+  {% if rfq and rfq.document_filename %}
+    <p class="text-xs text-slate-500">Current document: <a class="font-medium text-brand" href="{% url 'tenders:rfq_document' rfq.pk %}" target="_blank" rel="noopener">{{ rfq.document_filename }}</a> — upload a new PDF to replace it.</p>
+  {% endif %}
+  <div class="flex justify-end">
+    <button type="submit" class="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700">{% if rfq %}Save RFQ{% else %}Add RFQ{% endif %}</button>
+  </div>
+</form>

@@ -20,6 +20,16 @@ urlpatterns = [
         name="draft_msa",
     ),
     path(
+        "envelope-1/<int:pk>/no-advance-declaration/",
+        views.download_no_advance_declaration,
+        name="no_advance_template",
+    ),
+    path(
+        "envelope-1/<int:pk>/reopen/",
+        views.reopen_submission,
+        name="reopen",
+    ),
+    path(
         "envelope-1/<int:pk>/withdrawal/",
         views.withdrawal_request,
         name="withdrawal",

@@ -8,11 +8,14 @@ from django.conf import settings
 from django.db import transaction
 from django.http import HttpRequest, HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from accounts.company_context import get_active_company_id, set_active_company_id
-from accounts.roles import is_vendor_user
+from accounts.models import Notification
+from accounts.notifications import notify_event, staff_recipients
+from accounts.roles import PROCUREMENT, is_vendor_user
 from audit.models import AuditLog
 from audit.services import client_ip, write_audit
 from vendors.declarations import DECLARATION_TEXT, DECLARATION_VERSION
@@ -23,7 +26,7 @@ from vendors.forms import (
     Step3CIDBForm,
     Step4STForm,
     Step5LHDNForm,
-    Step6HSEForm,
+    Step6DeclarationForm,
 )
 from vendors.sample_data import create_sample_company
 from vendors.models import Company, CompanyDocument
@@ -42,7 +45,7 @@ STEP_META = {
     2: {
         "title": "SSM E-info",
         "short": "SSM E-info",
-        "hint": "Upload your SSM statutory pack. Expiry is required only for enterprises.",
+        "hint": "Upload your SSM document. Expiry is required only for enterprises.",
         "form": Step2SSMForm,
     },
     3: {
@@ -58,16 +61,16 @@ STEP_META = {
         "form": Step4STForm,
     },
     5: {
-        "title": "LHDN & E-Invoice",
-        "short": "LHDN & E-Invoice",
-        "hint": "Tax and payment details used for purchase orders and e-invoicing.",
+        "title": "LHDN & Bank Details",
+        "short": "LHDN & Bank",
+        "hint": "Tax number and the bank account Alpha Orange will pay into.",
         "form": Step5LHDNForm,
     },
     6: {
         "title": "Declaration",
         "short": "Declaration",
         "hint": "Review your profile summary, then accept the declaration to submit.",
-        "form": Step6HSEForm,
+        "form": Step6DeclarationForm,
     },
 }
 
@@ -105,6 +108,10 @@ def delete_company(request: HttpRequest, pk: int) -> HttpResponse:
         return blocked
 
     company = _owned_company(request, pk)
+    # Retention: once submitted, registration / Envelope 1 / bid records must be kept (docs/RETENTION.md)
+    if company.registration_status != Company.RegistrationStatus.DRAFT:
+        messages.error(request, "Only draft companies can be deleted. Submitted registrations are kept on record.")
+        return redirect("vendors:your_company")
     name = company.name
     company_id = company.pk
 
@@ -261,10 +268,6 @@ def wizard_step(request: HttpRequest, pk: int, step: int) -> HttpResponse:
         if form.is_valid():
             with transaction.atomic():
                 company = form.save(commit=False)
-                if step == 3:
-                    company.cidb_categories = (
-                        form.cleaned_data.get("cidb_categories_input") or []
-                    )
                 company.wizard_step = max(company.wizard_step, step)
                 company.save()
                 _maybe_store_pdfs(request, company, step, form)
@@ -372,5 +375,24 @@ def _submit_registration(request: HttpRequest, company: Company) -> HttpResponse
         },
         object_type="Company",
         object_id=company.pk,
+    )
+    if result.approved:
+        title = f"New company registered — {company.name}"
+        body = "Submitted and approved by the system rules check. It can now start Envelope 1."
+        level = Notification.Level.INFO
+    else:
+        reasons = "; ".join(REASON_LABELS.get(code, code) for code in result.reason_codes)
+        title = f"Company registration rejected — {company.name}"
+        body = f"Submitted but rejected by the system rules check: {reasons}"
+        level = Notification.Level.WARNING
+    # One row per company: a resubmission after rejection replaces the earlier alert
+    notify_event(
+        users=staff_recipients(PROCUREMENT),
+        dedupe_key=f"staff-company-{company.pk}-registration",
+        title=title,
+        body=body,
+        level=level,
+        link_url=reverse("staff:company_detail", args=[company.pk]),
+        link_label="View company",
     )
     return redirect("vendors:company_detail", pk=company.pk)

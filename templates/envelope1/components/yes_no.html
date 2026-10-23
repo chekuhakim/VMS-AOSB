@@ -1,0 +1,14 @@
+{# Yes/No pill radios. Expects `field` (TypedChoiceField yes/no). Blocks with data-reveal-for="<html_name>" show on "yes". #}
+<fieldset>
+  <legend class="text-sm text-slate-700">{{ field.label }}</legend>
+  <div class="mt-2 flex gap-2">
+    {% for value, text in field.field.choices %}
+      <label class="inline-flex min-w-[4.5rem] cursor-pointer items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-1.5 text-sm font-semibold text-slate-700 transition hover:border-brand has-[:checked]:border-brand has-[:checked]:bg-brand has-[:checked]:text-white has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand/40">
+        <input type="radio" name="{{ field.html_name }}" value="{{ value }}" class="sr-only" data-yesno
+               {% if field.value == value %}checked{% endif %} />
+        {{ text }}
+      </label>
+    {% endfor %}
+  </div>
+  {% if field.errors %}<p class="mt-1 text-xs text-rose-600">{{ field.errors.0 }}</p>{% endif %}
+</fieldset>

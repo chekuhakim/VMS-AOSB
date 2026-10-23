@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="mb-6">
+    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">{{ company.name }}</p>
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900">Your bids</h1>
+    <p class="mt-1 text-sm text-slate-600">Every quotation you've submitted and its outcome.</p>
+  </div>
+
+  <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <table class="min-w-full text-left text-sm">
+      <thead class="border-b border-slate-200 bg-cream text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <tr>
+          <th class="px-4 py-3">Project</th>
+          <th class="px-4 py-3">RFQ</th>
+          <th class="px-4 py-3 text-right">Total (RM)</th>
+          <th class="px-4 py-3">Submitted</th>
+          <th class="px-4 py-3">Status</th>
+          <th class="px-4 py-3"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for row in rows %}
+          {% with q=row.quote %}
+          <tr>
+            <td class="px-4 py-3"><p class="font-medium text-slate-900">{{ q.rfq.project.title }}</p><p class="font-mono text-xs text-slate-500">{{ q.rfq.project.reference }}</p></td>
+            <td class="px-4 py-3 text-slate-700">{{ q.rfq.code }} · {{ q.rfq.title }}</td>
+            <td class="px-4 py-3 text-right font-semibold text-slate-900">{{ q.total_price|floatformat:"2g" }}</td>
+            <td class="px-4 py-3 text-slate-500">{{ q.submitted_at|date:"d M Y H:i" }}</td>
+            <td class="px-4 py-3">
+              {% if row.result.1 == "emerald" %}{% include "components/status_badge.html" with label=row.result.0 tone="success" %}
+              {% elif row.result.1 == "rose" %}{% include "components/status_badge.html" with label=row.result.0 tone="danger" %}
+              {% elif row.result.1 == "amber" %}{% include "components/status_badge.html" with label=row.result.0 tone="warning" %}
+              {% elif row.result.1 == "sky" %}{% include "components/status_badge.html" with label=row.result.0 tone="info" %}
+              {% else %}{% include "components/status_badge.html" with label=row.result.0 tone="neutral" %}{% endif %}
+            </td>
+            <td class="px-4 py-3 text-right whitespace-nowrap">
+              <a href="{% url 'tenders:vendor_quotation_document' q.pk %}" target="_blank" rel="noopener" class="font-medium text-brand hover:text-brand-700">PDF</a>
+              <span class="text-slate-300">·</span>
+              <a href="{% url 'tenders:project_detail' q.rfq.project_id %}" class="font-medium text-brand hover:text-brand-700">Project</a>
+            </td>
+          </tr>
+          {% endwith %}
+        {% empty %}
+          <tr><td colspan="6" class="px-4 py-10 text-center text-slate-500">No quotations yet. <a class="font-medium text-brand" href="{% url 'tenders:project_list' %}">Browse open projects</a>.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

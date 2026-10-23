@@ -42,6 +42,7 @@ from staff.services import (
     step_checklist,
     step_statuses,
 )
+from tenders.services import pending_awards
 from vendors.models import Company, CompanyDocument
 from vendors.rules import REASON_LABELS
 
@@ -361,6 +362,7 @@ def approval_queue(request: HttpRequest) -> HttpResponse:
         {
             "page_title": "Director approval",
             "submissions": qs,
+            "awards": pending_awards(),
             "can_approve": can_approve(request.user),
         },
     )

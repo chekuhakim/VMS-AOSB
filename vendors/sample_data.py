@@ -48,7 +48,6 @@ def sample_identifiers() -> dict[str, str]:
         "cidb_registration_number": f"CIDB-{_random_digits(7)}",
         "st_license_number": f"ST-{_random_digits(6)}",
         "lhdn_tin": f"C{_random_digits(10)}",
-        "sst_registration_number": f"W10-{_random_digits(4)}-{_random_digits(8)}",
     }
 
 
@@ -83,22 +82,17 @@ def create_sample_company(*, owner: AbstractBaseUser) -> Company:
         # Step 3
         cidb_registration_number=ids["cidb_registration_number"],
         cidb_grade="G5",
-        cidb_categories=["CE", "ME"],
         cidb_certificate_expiry=today + timedelta(days=200),
         # Step 4
         includes_electrical_work=True,
-        st_contractor_class="Class A",
         st_license_number=ids["st_license_number"],
         st_certificate_expiry=today + timedelta(days=180),
-        chargeman_name="Ahmad bin Hassan",
         # Step 5
         lhdn_tin=ids["lhdn_tin"],
-        sst_registration_number=ids["sst_registration_number"],
-        myinvois_readiness=Company.MyInvoisReadiness.YES,
-        bank_account_for_payment="Maybank 5642-1234-5678",
-        # Step 6 fields (declaration still confirmed on submit)
-        hse_representative_name="Siti Nurhaliza",
-        public_liability_coverage="RM 1,000,000",
+        bank_name=Company.Bank.MAYBANK,
+        bank_account_number=f"5642{_random_digits(8)}",
+        bank_account_name="Cahaya Engineering Sdn Bhd",
+        # Step 6 declaration is confirmed on submit
         declaration_accepted=False,
     )
 

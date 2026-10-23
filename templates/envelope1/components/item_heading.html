@@ -1,0 +1,12 @@
+{# Checklist item title with optional help tooltip. Expects `title`, optional `tip`. #}
+<div class="flex items-start gap-2">
+  <h2 class="text-sm font-semibold text-slate-900">{{ title }}</h2>
+  {% if tip %}
+    <span class="group relative inline-flex shrink-0">
+      <button type="button" class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand ring-1 ring-brand/20" aria-label="Help">i</button>
+      <span class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden w-64 -translate-x-1/2 rounded-lg bg-slate-900 px-3 py-2 text-xs font-normal text-white shadow-lg group-hover:block group-focus-within:block">
+        {{ tip }}
+      </span>
+    </span>
+  {% endif %}
+</div>

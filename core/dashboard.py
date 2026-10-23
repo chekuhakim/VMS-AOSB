@@ -100,7 +100,7 @@ def _registration_stage(company: Company | None) -> StageCard:
 
 
 def build_progress_stages(company: Company | None) -> list[StageCard]:
-    """Four onboarding stages — Envelope 1 status from the company's single pack."""
+    """Three onboarding stages — registration, Envelope 1, RFQ submission."""
     from envelope1.models import Envelope1Submission
     from envelope1.services import latest_submission
 
@@ -184,18 +184,11 @@ def build_progress_stages(company: Company | None) -> list[StageCard]:
             status_label="Available",
             tone="progress",
             locked=False,
-            href=reverse("core:project"),
+            href=reverse("tenders:project_list"),
         )
 
-    stage4 = StageCard(
-        number=4,
-        title="Envelope 2",
-        description="Post-award submission (planned). Unlocks after tender award.",
-        status_label="Locked",
-        tone="locked",
-        locked=True,
-    )
-    return [stage1, stage2, stage3, stage4]
+    # The vendor journey ends at RFQ submission; award outcomes are handled by staff
+    return [stage1, stage2, stage3]
 
 
 def build_quick_actions(company: Company | None) -> list[QuickAction]:

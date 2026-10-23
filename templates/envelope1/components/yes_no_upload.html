@@ -1,0 +1,5 @@
+{# Yes/No question whose "Yes" reveals a PDF upload. Expects `answer`, `upload`, optional `doc`. #}
+{% include "envelope1/components/yes_no.html" with field=answer %}
+<div data-reveal-for="{{ answer.html_name }}" class="{% if answer.value != 'yes' %}hidden{% endif %} mt-3 rounded-lg border border-dashed border-brand/30 bg-white px-3 py-3">
+  {% include "envelope1/components/upload_field.html" with field=upload doc=doc %}
+</div>

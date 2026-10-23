@@ -1,0 +1,6 @@
+{# Labelled registration-wizard field with its first error #}
+<div>
+  <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-slate-700">{{ field.label }}</label>
+  {{ field }}
+  {% if field.errors %}<p class="mt-1 text-xs text-rose-600">{{ field.errors.0 }}</p>{% endif %}
+</div>

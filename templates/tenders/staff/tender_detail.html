@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div>
+      <a href="{% url 'tenders:tender_list' %}" class="text-sm font-medium text-brand hover:text-brand-700">← All projects</a>
+      <div class="mt-2 flex flex-wrap items-center gap-3">
+        <h1 class="text-2xl font-bold tracking-tight text-slate-900">{{ project.title }}</h1>
+        {% include "tenders/components/project_status.html" %}
+      </div>
+      <p class="mt-1 font-mono text-xs text-slate-500">{{ project.reference|default:"Draft — reference assigned on publish" }}</p>
+    </div>
+    {% if can_evaluate %}
+      <div class="flex flex-wrap gap-2">
+        {% if project.is_editable %}
+          <a href="{% url 'tenders:project_edit' project.pk %}" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">Edit project</a>
+          <form method="post" action="{% url 'tenders:project_publish' project.pk %}" onsubmit="return confirm('Publish this project? Eligible vendors will be notified and the project can no longer be edited.')">
+            {% csrf_token %}
+            <button type="submit" class="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700">Publish</button>
+          </form>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+
+  {% if project.status == "cancelled" %}
+    <div class="mb-6 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-800">
+      <p class="font-semibold">Cancelled {{ project.cancelled_at|date:"d M Y H:i" }}</p>
+      <p class="mt-1">{{ project.cancel_reason }}</p>
+    </div>
+  {% elif project.status == "open" and project.is_sealed %}
+    <div class="mb-6 flex items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-5 py-4 text-sm text-sky-900">
+      <svg class="mt-0.5 h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"/></svg>
+      <div>
+        <p class="font-semibold">Quotations are sealed until {{ project.closing_at|date:"d M Y, H:i" }}</p>
+        <p class="mt-0.5">You can see how many vendors have quoted, but prices and files stay hidden until closing.</p>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="mb-6 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+    {% include "tenders/components/project_summary.html" %}
+    <div class="mt-5 border-t border-slate-100 pt-5">
+      <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Scope</p>
+      <p class="mt-1 whitespace-pre-line text-sm text-slate-700">{{ project.scope }}</p>
+    </div>
+  </div>
+
+  <h2 class="mb-3 text-lg font-bold tracking-tight text-slate-900">RFQs ({{ rows|length }})</h2>
+  <div class="space-y-4">
+    {% for row in rows %}
+      {% with rfq=row.rfq %}
+      <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div class="min-w-0">
+            <p class="font-mono text-xs text-slate-500">{{ rfq.code }}</p>
+            <p class="font-semibold text-slate-900">{{ rfq.title }}</p>
+            {% if rfq.description %}<p class="mt-1 whitespace-pre-line text-sm text-slate-600">{{ rfq.description }}</p>{% endif %}
+            <p class="mt-2 text-xs text-slate-500">
+              {% if rfq.quantity %}Qty {{ rfq.quantity|floatformat:"-2" }} {{ rfq.unit }} · {% endif %}
+              {% if rfq.document_filename %}<a class="font-medium text-brand" href="{% url 'tenders:rfq_document' rfq.pk %}" target="_blank" rel="noopener">{{ rfq.document_filename }}</a>{% else %}No tender document{% endif %}
+            </p>
+          </div>
+          <div class="flex shrink-0 items-center gap-3">
+            {% if project.status != "draft" %}
+              <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{{ row.quote_count }} quotation{{ row.quote_count|pluralize }}</span>
+            {% endif %}
+            {% if project.is_editable and can_evaluate %}
+              <a href="{% url 'tenders:rfq_edit' project.pk rfq.pk %}" class="text-sm font-medium text-brand hover:text-brand-700">Edit</a>
+              <form method="post" action="{% url 'tenders:rfq_delete' project.pk rfq.pk %}" onsubmit="return confirm('Remove {{ rfq.code }}?')">
+                {% csrf_token %}
+                <button type="submit" class="text-sm font-medium text-rose-600 hover:text-rose-700">Remove</button>
+              </form>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if row.active_award %}
+          <div class="mt-4 rounded-xl {% if row.active_award.status == 'approved' %}border border-emerald-200 bg-emerald-50 text-emerald-900{% else %}border border-amber-200 bg-amber-50 text-amber-900{% endif %} px-4 py-3 text-sm">
+            <p class="font-semibold">
+              {% if row.active_award.status == 'approved' %}Awarded to {{ row.active_award.quotation.company.name }}{% else %}Recommended: {{ row.active_award.quotation.company.name }} — awaiting Director{% endif %}
+            </p>
+            <p class="mt-0.5 text-xs">RM {{ row.active_award.quotation.total_price|floatformat:"2g" }} · {{ row.active_award.recommendation_note }}</p>
+            {% if row.active_award.decided_at %}<p class="mt-0.5 text-xs">Approved by {{ row.active_award.decided_by|default:"—" }} on {{ row.active_award.decided_at|date:"d M Y H:i" }}{% if row.active_award.decision_note %} · {{ row.active_award.decision_note }}{% endif %}</p>{% endif %}
+          </div>
+          {% if row.active_award.status == 'pending_director' and can_approve %}
+            <div class="mt-3">{% include "tenders/staff/components/award_decision_card.html" with award=row.active_award next_url=request.path %}</div>
+          {% endif %}
+        {% endif %}
+        {% for old in row.history %}
+          <p class="mt-2 text-xs text-slate-400">Rejected recommendation: {{ old.quotation.company.name }} — {{ old.decision_note }} ({{ old.decided_at|date:"d M Y" }})</p>
+        {% endfor %}
+
+        {% if row.quotations %}
+          <form method="post" action="{% url 'tenders:award_recommend' rfq.pk %}" class="mt-4">
+            {% csrf_token %}
+            <div class="overflow-x-auto rounded-xl border border-slate-200">
+              <table class="min-w-full text-left text-sm">
+                <thead class="bg-cream text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <tr>
+                    {% if can_evaluate and not row.active_award %}<th class="px-3 py-2"></th>{% endif %}
+                    <th class="px-3 py-2">Rank</th>
+                    <th class="px-3 py-2">Company</th>
+                    <th class="px-3 py-2">CIDB</th>
+                    <th class="px-3 py-2 text-right">Total (RM)</th>
+                    <th class="px-3 py-2">Est. handover</th>
+                    <th class="px-3 py-2">Quotation</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  {% for q in row.quotations %}
+                    <tr class="{% if forloop.first %}bg-emerald-50/50{% endif %}">
+                      {% if can_evaluate and not row.active_award %}
+                        <td class="px-3 py-2"><input type="radio" name="quotation" value="{{ q.pk }}" required class="h-4 w-4 accent-brand" {% if forloop.first %}checked{% endif %} /></td>
+                      {% endif %}
+                      <td class="px-3 py-2 text-slate-500">#{{ forloop.counter }}</td>
+                      <td class="px-3 py-2 font-medium text-slate-900">{{ q.company.name }}{% if q.remarks %}<p class="text-xs font-normal text-slate-500">{{ q.remarks }}</p>{% endif %}</td>
+                      <td class="px-3 py-2 text-slate-600">{{ q.company.cidb_grade|default:"—" }}</td>
+                      <td class="px-3 py-2 text-right font-semibold text-slate-900">{{ q.total_price|floatformat:"2g" }}</td>
+                      <td class="px-3 py-2 text-slate-600">{{ q.handover_date|date:"d M Y"|default:"—" }}</td>
+                      <td class="px-3 py-2"><a class="font-medium text-brand" href="{% url 'tenders:quotation_document' q.pk %}" target="_blank" rel="noopener">View PDF</a></td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% if can_evaluate and not row.active_award and project.status == "open" %}
+              <div class="mt-3 flex flex-col gap-2 sm:flex-row">
+                <input type="text" name="note" required placeholder="Justification for the recommended quotation (required)" class="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+                <button type="submit" class="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700">Send to Director</button>
+              </div>
+            {% endif %}
+          </form>
+        {% elif project.status == "open" and not project.is_sealed %}
+          <p class="mt-4 text-sm text-slate-500">No quotations were received for this RFQ.</p>
+        {% endif %}
+      </div>
+      {% endwith %}
+    {% empty %}
+      <div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500">No RFQs yet. Add at least one before publishing.</div>
+    {% endfor %}
+  </div>
+
+  {% if rfq_form and can_evaluate %}
+    <h2 class="mb-3 mt-8 text-lg font-bold tracking-tight text-slate-900">Add RFQ</h2>
+    <div class="max-w-3xl">
+      {% url 'tenders:rfq_add' project.pk as add_url %}
+      {% include "tenders/staff/components/rfq_form_fields.html" with form=rfq_form rfq=None action_url=add_url %}
+    </div>
+  {% endif %}
+
+  {% if can_evaluate and project.status != "cancelled" %}
+    <details class="mt-10 max-w-3xl rounded-2xl border border-rose-200 bg-white p-5">
+      <summary class="cursor-pointer text-sm font-semibold text-rose-700">Cancel this project</summary>
+      <form method="post" action="{% url 'tenders:project_cancel' project.pk %}" class="mt-3 flex flex-col gap-2 sm:flex-row">
+        {% csrf_token %}
+        <input type="text" name="note" required placeholder="Reason for cancellation (shared with bidders)" class="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+        <button type="submit" class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700">Cancel project</button>
+      </form>
+    </details>
+  {% endif %}
+{% endblock %}

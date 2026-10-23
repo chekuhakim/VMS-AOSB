@@ -12,6 +12,7 @@ urlpatterns = [
     path("", include("vendors.urls")),
     path("", include("envelope1.urls")),
     path("", include("staff.urls")),
+    path("", include("tenders.urls")),
     path("", include("core.urls")),
 ]
 

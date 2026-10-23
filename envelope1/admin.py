@@ -1,6 +1,30 @@
 from django.contrib import admin
 
-from .models import Envelope1Document, Envelope1Submission, WithdrawalRequest
+from .models import (
+    Envelope1Document,
+    Envelope1Submission,
+    FinancialStatement,
+    PastProject,
+    PrimarySupplier,
+    WithdrawalRequest,
+)
+
+
+class FinancialStatementInline(admin.TabularInline):
+    model = FinancialStatement
+    extra = 0
+    raw_id_fields = ("document",)
+
+
+class PrimarySupplierInline(admin.TabularInline):
+    model = PrimarySupplier
+    extra = 0
+
+
+class PastProjectInline(admin.TabularInline):
+    model = PastProject
+    extra = 0
+    raw_id_fields = ("document",)
 
 
 class Envelope1DocumentInline(admin.TabularInline):
@@ -29,7 +53,12 @@ class Envelope1SubmissionAdmin(admin.ModelAdmin):
     )
     list_filter = ("status",)
     search_fields = ("company__name", "legal_name")
-    inlines = [Envelope1DocumentInline]
+    inlines = [
+        Envelope1DocumentInline,
+        FinancialStatementInline,
+        PrimarySupplierInline,
+        PastProjectInline,
+    ]
     raw_id_fields = ("company", "locked_by")
 
 

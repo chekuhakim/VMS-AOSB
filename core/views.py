@@ -65,24 +65,6 @@ def document_vault(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
-def project(request: HttpRequest) -> HttpResponse:
-    return _placeholder(
-        request,
-        "Project",
-        "Vendor project / tender browse unlocks in Phase 5 after Envelope 1 approval.",
-    )
-
-
-@login_required
-def your_bid(request: HttpRequest) -> HttpResponse:
-    return _placeholder(
-        request,
-        "Your bid",
-        "RFQ submission list and drill-down arrive in Phase 5.",
-    )
-
-
-@login_required
 def admin_dashboard(request: HttpRequest) -> HttpResponse:
     return redirect("staff:admin_dashboard")
 
@@ -110,12 +92,3 @@ def approval(request: HttpRequest) -> HttpResponse:
 @login_required
 def audit_log(request: HttpRequest) -> HttpResponse:
     return redirect("staff:audit_log")
-
-
-@login_required
-def tender(request: HttpRequest) -> HttpResponse:
-    return _placeholder(
-        request,
-        "Tender",
-        "Admin project / RFQ management arrives in Phase 5.",
-    )

@@ -1,0 +1,8 @@
+{# Declaration checkbox card. Expects `field` (BooleanField whose label is the declaration text). #}
+<label for="{{ field.id_for_label }}"
+       class="flex cursor-pointer items-start gap-3 rounded-xl border {% if field.errors %}border-rose-300{% else %}border-slate-200{% endif %} bg-white px-4 py-3 transition hover:border-brand/40 has-[:checked]:border-brand has-[:checked]:bg-brand-50/40">
+  <input type="checkbox" name="{{ field.html_name }}" id="{{ field.id_for_label }}"
+         class="mt-0.5 h-4 w-4 shrink-0 accent-brand" {% if field.value %}checked{% endif %} />
+  <span class="text-sm leading-relaxed text-slate-700">{{ field.label }}</span>
+</label>
+{% if field.errors %}<p class="mt-1 text-xs text-rose-600">{{ field.errors.0 }}</p>{% endif %}
