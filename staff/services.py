@@ -440,13 +440,14 @@ def director_decide(
         object_id=submission.pk,
     )
     if approve:
+        # Director approval remarks are internal. They stay in the audit log but
+        # must never be included in the vendor's approval email.
         _notify_vendor(
             submission,
             topic="status",
             title="Envelope 1 approved",
-            body=_with_note(
-                "Congratulations — your company is pre-qualified and can now quote on open projects.",
-                note,
+            body=(
+                "Congratulations — your company is pre-qualified and can now quote on open projects."
             ),
             level=Notification.Level.SUCCESS,
         )

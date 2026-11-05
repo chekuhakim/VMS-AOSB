@@ -5,6 +5,7 @@ from __future__ import annotations
 from django.test import Client, TestCase
 from django.urls import reverse
 
+from accounts.models import Notification
 from accounts.roles import DIRECTOR, PROCUREMENT, SYSTEM_ADMIN, VIEWER
 from core.testing import (
     make_company,
@@ -167,6 +168,18 @@ class EnvelopeSegregationOfDutiesTests(TestCase):
         )
         self.submission.refresh_from_db()
         self.assertEqual(self.submission.status, S.APPROVED)
+
+    def test_director_approval_note_stays_internal(self) -> None:
+        Envelope1Submission.objects.filter(pk=self.submission.pk).update(status=S.PENDING_DIRECTOR)
+        staff_client(self.director).post(
+            reverse("staff:approval_decide", args=[self.submission.pk]),
+            {"decision": "approve", "note": "be careful with this vendor"},
+        )
+        note = Notification.objects.get(
+            user=self.vendor, dedupe_key=f"e1-{self.submission.pk}-status"
+        )
+        self.assertIn("pre-qualified", note.body)
+        self.assertNotIn("be careful with this vendor", note.body)
 
     def test_director_cannot_reject_at_evaluation(self) -> None:
         Envelope1Submission.objects.filter(pk=self.submission.pk).update(status=S.IN_PROGRESS)
