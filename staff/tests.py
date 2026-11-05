@@ -15,7 +15,8 @@ from core.testing import (
     staff_client,
     vendor_client,
 )
-from envelope1.models import Envelope1Submission, WithdrawalRequest
+from envelope1.models import Envelope1Item, Envelope1Submission, WithdrawalRequest
+from staff.models import Envelope1ItemEvaluation
 from tenders.models import TenderAward
 
 STAFF_PAGES = [
@@ -174,6 +175,92 @@ class EnvelopeSegregationOfDutiesTests(TestCase):
         )
         self.submission.refresh_from_db()
         self.assertEqual(self.submission.status, S.IN_PROGRESS)
+
+    def test_return_for_correction_requires_a_failed_item(self) -> None:
+        self._lock_as(self.procurement)
+        self.submission.item_evaluations.update(result=Envelope1ItemEvaluation.Result.PASS)
+        staff_client(self.procurement).post(
+            reverse("staff:envelope1_return_correction", args=[self.submission.pk]),
+            {"note": ""},
+        )
+        self.submission.refresh_from_db()
+        self.assertEqual(self.submission.status, S.IN_PROGRESS)
+
+    def test_failed_items_are_returned_and_only_those_are_reopened(self) -> None:
+        self._lock_as(self.procurement)
+        self.submission.item_evaluations.update(result=Envelope1ItemEvaluation.Result.PASS)
+        self.submission.item_evaluations.filter(
+            doc_type=Envelope1Item.SITE_SUPERVISOR
+        ).update(
+            result=Envelope1ItemEvaluation.Result.FAIL,
+            note="Upload a clearer supervisor CV.",
+        )
+
+        eval_page = staff_client(self.procurement).get(
+            reverse("staff:envelope1_evaluate", args=[self.submission.pk, 6])
+        )
+        self.assertContains(eval_page, "Return for correction")
+
+        response = staff_client(self.procurement).post(
+            reverse("staff:envelope1_return_correction", args=[self.submission.pk]),
+            {"note": "Please fix the returned item."},
+        )
+        self.assertRedirects(
+            response,
+            reverse("staff:envelope1_evaluate", args=[self.submission.pk, 6]),
+        )
+        self.submission.refresh_from_db()
+        self.assertEqual(self.submission.status, S.RETURNED_FOR_CORRECTION)
+        self.assertFalse(self.submission.is_locked)
+        self.assertEqual(self.submission.returned_note, "Please fix the returned item.")
+
+        vendor = vendor_client(self.vendor, self.company)
+        page = vendor.get(reverse("envelope1:corrections", args=[self.submission.pk]))
+        self.assertContains(page, "Dedicated site supervisor")
+        self.assertContains(page, "Upload a clearer supervisor CV.")
+        self.assertContains(
+            page, reverse("envelope1:resubmit_correction", args=[self.submission.pk])
+        )
+
+        resubmit = vendor.post(
+            reverse("envelope1:resubmit_correction", args=[self.submission.pk])
+        )
+        self.assertRedirects(
+            resubmit, reverse("envelope1:home"), fetch_redirect_response=False
+        )
+        self.submission.refresh_from_db()
+        self.assertEqual(self.submission.status, S.PENDING_EVALUATION)
+        self.assertEqual(self.submission.correction_round, 1)
+        self.assertEqual(
+            self.submission.item_evaluations.get(
+                doc_type=Envelope1Item.SITE_SUPERVISOR
+            ).result,
+            Envelope1ItemEvaluation.Result.PENDING,
+        )
+        self.assertEqual(
+            self.submission.item_evaluations.get(
+                doc_type=Envelope1Item.ORG_CHART
+            ).result,
+            Envelope1ItemEvaluation.Result.PASS,
+        )
+
+    def test_correction_mode_blocks_steps_without_returned_items(self) -> None:
+        self._lock_as(self.procurement)
+        self.submission.item_evaluations.update(result=Envelope1ItemEvaluation.Result.PASS)
+        self.submission.item_evaluations.filter(
+            doc_type=Envelope1Item.SITE_SUPERVISOR
+        ).update(result=Envelope1ItemEvaluation.Result.FAIL, note="Fix this.")
+        staff_client(self.procurement).post(
+            reverse("staff:envelope1_return_correction", args=[self.submission.pk])
+        )
+        vendor = vendor_client(self.vendor, self.company)
+        self.assertRedirects(
+            vendor.get(reverse("envelope1:wizard", args=[self.submission.pk, 2])),
+            reverse("envelope1:corrections", args=[self.submission.pk]),
+        )
+        allowed = vendor.get(reverse("envelope1:wizard", args=[self.submission.pk, 5]))
+        self.assertEqual(allowed.status_code, 200)
+        self.assertContains(allowed, "Correction mode")
 
     def test_only_procurement_decides_withdrawals(self) -> None:
         Envelope1Submission.objects.filter(pk=self.submission.pk).update(status=S.IN_PROGRESS)

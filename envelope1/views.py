@@ -21,7 +21,7 @@ from accounts.roles import PROCUREMENT, is_vendor_user
 from audit.models import AuditLog
 from audit.services import write_audit
 from documents.storage import open_stored
-from envelope1.checklist import ITEM_HELP, LEAD_TIME_DESCRIPTION, STEP_META
+from envelope1.checklist import ITEM_HELP, LEAD_TIME_DESCRIPTION, STEP_ITEMS, STEP_META
 from envelope1.documents import save_envelope1_pdf
 from envelope1.forms import (
     BaseRowFormSet,
@@ -66,7 +66,18 @@ STEP_TABLES: dict[int, str] = {
     4: "primary_suppliers",
     6: "past_projects",
 }
+STEP_TABLE_ITEMS: dict[int, str] = {
+    3: Envelope1Item.FINANCIAL_STATEMENTS,
+    4: Envelope1Item.PRIMARY_SUPPLIERS,
+    6: Envelope1Item.PAST_PROJECTS,
+}
 from vendors.models import Company, CompanyDocument
+
+
+def _correction_failed_items(submission: Envelope1Submission) -> dict[str, dict]:
+    from staff.services import failed_item_details
+
+    return {row["item"]: row for row in failed_item_details(submission)}
 
 
 def _staff_submitted_key(submission: Envelope1Submission) -> str:
@@ -109,6 +120,8 @@ def envelope1_home(request: HttpRequest) -> HttpResponse:
             object_id=submission.pk,
         )
 
+    if submission.is_returned_for_correction:
+        return redirect("envelope1:corrections", pk=submission.pk)
     step = submission.wizard_step if submission.wizard_step in STEP_META else 1
     return redirect("envelope1:wizard", pk=submission.pk, step=step)
 
@@ -118,6 +131,63 @@ def envelope1_home(request: HttpRequest) -> HttpResponse:
 def envelope1_start(request: HttpRequest) -> HttpResponse:
     """Legacy start URL — same as home (one Envelope 1 per company)."""
     return envelope1_home(request)
+
+
+@login_required
+def envelope1_corrections(request: HttpRequest, pk: int) -> HttpResponse:
+    """Vendor-facing list of items Procurement returned for correction."""
+    company = _vendor_company(request)
+    if not isinstance(company, Company):
+        return company
+    submission = Envelope1Submission.objects.filter(pk=pk, company=company).first()
+    if submission is None:
+        return redirect("envelope1:home")
+    if not submission.is_returned_for_correction:
+        return redirect("envelope1:home")
+
+    from staff.services import failed_item_details
+
+    failed = failed_item_details(submission)
+    for row in failed:
+        meta = STEP_META.get(row["step"] or 0, {})
+        row["step_title"] = meta.get("title", "")
+    return render(
+        request,
+        "envelope1/corrections.html",
+        {
+            "page_title": "Envelope 1 corrections",
+            "company": company,
+            "submission": submission,
+            "failed_items": failed,
+            "editable": True,
+        },
+    )
+
+
+@login_required
+@require_http_methods(["POST"])
+def envelope1_resubmit_correction(request: HttpRequest, pk: int) -> HttpResponse:
+    company = _vendor_company(request)
+    if not isinstance(company, Company):
+        return company
+    submission = Envelope1Submission.objects.filter(pk=pk, company=company).first()
+    if submission is None:
+        return redirect("envelope1:home")
+    if not submission.is_returned_for_correction:
+        messages.error(request, "This Envelope 1 is not waiting for corrections.")
+        return redirect("envelope1:home")
+
+    from staff.services import resubmit_correction
+
+    try:
+        resubmit_correction(submission=submission, actor=request.user, request=request)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect("envelope1:corrections", pk=submission.pk)
+    messages.success(
+        request, "Corrections sent back to Procurement. They will re-check the failed items."
+    )
+    return redirect("envelope1:home")
 
 
 @login_required
@@ -134,11 +204,23 @@ def envelope1_wizard(request: HttpRequest, pk: int, step: int) -> HttpResponse:
     if submission is None:
         return redirect("envelope1:home")
     docs = latest_docs_map(submission)
-    editable = submission.is_editable
+    correction_mode = submission.is_returned_for_correction
+    correction_failed = _correction_failed_items(submission) if correction_mode else {}
+    correction_items = set(correction_failed)
+    correction_steps = {
+        row["step"] for row in correction_failed.values() if row["step"] is not None
+    }
+    if correction_mode and step not in correction_steps:
+        messages.info(request, "Only the items returned for correction can be changed.")
+        return redirect("envelope1:corrections", pk=submission.pk)
+    editable = submission.is_editable or (correction_mode and step in correction_steps)
 
     if request.method == "POST" and not editable:
         if submission.can_reopen:
             messages.error(request, "This Envelope 1 is submitted. Click Edit to reopen it first.")
+        elif correction_mode:
+            messages.error(request, "Only the items returned for correction can be changed.")
+            return redirect("envelope1:corrections", pk=submission.pk)
         else:
             messages.error(request, "This Envelope 1 cycle is locked. Request a withdrawal to edit.")
         return redirect("envelope1:wizard", pk=submission.pk, step=step)
@@ -172,7 +254,9 @@ def envelope1_wizard(request: HttpRequest, pk: int, step: int) -> HttpResponse:
             form = Step1MSAPartyForm(instance=submission)
 
     elif step == 2:
-        require_pdf = Envelope1Document.DocType.SIGNED_MSA not in docs
+        require_pdf = (
+            Envelope1Document.DocType.SIGNED_MSA not in docs or correction_mode
+        )
         if request.method == "POST":
             form = Step2SignedMSAForm(request.POST, request.FILES, require_pdf=require_pdf)
             if form.is_valid():
@@ -197,6 +281,9 @@ def envelope1_wizard(request: HttpRequest, pk: int, step: int) -> HttpResponse:
                         object_id=submission.pk,
                     )
                 messages.success(request, "Signed MSA details saved.")
+                if correction_mode:
+                    messages.success(request, "Correction saved. Resubmit when you are done.")
+                    return redirect("envelope1:corrections", pk=submission.pk)
                 return redirect("envelope1:wizard", pk=submission.pk, step=3)
         else:
             form = Step2SignedMSAForm(require_pdf=require_pdf)
@@ -204,14 +291,22 @@ def envelope1_wizard(request: HttpRequest, pk: int, step: int) -> HttpResponse:
     elif step in STEP_FORMS:
         form_cls = STEP_FORMS[step]
         table_kind = STEP_TABLES.get(step)
+        table_item = STEP_TABLE_ITEMS.get(step)
+        table_allowed = not correction_mode or table_item in correction_items
         data = request.POST if request.method == "POST" else None
         files = request.FILES if request.method == "POST" else None
-        form = form_cls(data, files, submission=submission, existing=docs)
-        if table_kind:
+        form = form_cls(
+            data,
+            files,
+            submission=submission,
+            existing=docs,
+            allowed_items=correction_items if correction_mode else None,
+        )
+        if table_kind and table_allowed:
             row_formset = build_row_formset(table_kind, submission, data, files)
         if request.method == "POST":
             # 4.1 table only matters when the vendor answers "Yes"
-            table_in_use = row_formset is not None and (
+            table_in_use = table_allowed and row_formset is not None and (
                 table_kind != "past_projects" or request.POST.get("has_past_projects") == "yes"
             )
             form_ok = form.is_valid()
@@ -233,6 +328,9 @@ def envelope1_wizard(request: HttpRequest, pk: int, step: int) -> HttpResponse:
                         object_id=submission.pk,
                     )
 
+                if correction_mode:
+                    messages.success(request, "Correction saved. Resubmit when you are done.")
+                    return redirect("envelope1:corrections", pk=submission.pk)
                 if step < 6:
                     messages.success(request, f"Step {step} saved.")
                     return redirect("envelope1:wizard", pk=submission.pk, step=step + 1)
@@ -300,6 +398,13 @@ def envelope1_wizard(request: HttpRequest, pk: int, step: int) -> HttpResponse:
             "item_labels": dict(Envelope1Item.choices),
             "lead_time_description": LEAD_TIME_DESCRIPTION,
             "editable": editable,
+            "correction_mode": correction_mode,
+            "correction_failed": correction_failed,
+            "table_locked": bool(
+                correction_mode
+                and STEP_TABLE_ITEMS.get(step)
+                and STEP_TABLE_ITEMS[step] not in correction_items
+            ),
             "msa_ready": bool(submission.msa_party_saved_at),
             "pending_withdrawal": submission.withdrawal_requests.filter(
                 status=WithdrawalRequest.Status.PENDING

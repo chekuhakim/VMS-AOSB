@@ -37,6 +37,7 @@ from staff.services import (
     lock_for_evaluation,
     reject_at_evaluation,
     reopen_evaluation,
+    return_to_vendor,
     review_withdrawal,
     send_to_director,
     set_item_result,
@@ -289,6 +290,7 @@ def envelope1_evaluate(request: HttpRequest, pk: int, step: int) -> HttpResponse
             "form": form,
             "progress": evaluation_progress(submission),
             "editable": editable,
+            "can_return": editable and evaluation_progress(submission)["failed"] > 0,
             "can_evaluate": user_can_evaluate,
             "can_approve": user_can_approve,
             "procurement_done": procurement_done,
@@ -328,6 +330,22 @@ def envelope1_send_director(request: HttpRequest, pk: int) -> HttpResponse:
     try:
         send_to_director(submission=submission, actor=request.user, request=request)
         messages.success(request, "Sent to Director for final approval.")
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    return redirect("staff:envelope1_evaluate", pk=pk, step=_EVAL_LAST_STEP)
+
+
+@login_required
+@procurement_required
+@require_POST
+def envelope1_return_correction(request: HttpRequest, pk: int) -> HttpResponse:
+    submission = get_object_or_404(Envelope1Submission, pk=pk)
+    note = (request.POST.get("note") or "").strip()
+    try:
+        return_to_vendor(
+            submission=submission, actor=request.user, note=note, request=request
+        )
+        messages.success(request, "Envelope 1 returned to the vendor for correction.")
     except ValueError as exc:
         messages.error(request, str(exc))
     return redirect("staff:envelope1_evaluate", pk=pk, step=_EVAL_LAST_STEP)

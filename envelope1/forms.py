@@ -92,6 +92,37 @@ def _yes_no_initial(value: bool | None) -> str | None:
     return "yes" if value else "no"
 
 
+# Which form fields belong to each checklist item. Table items are handled by
+# their row formset instead of a single form field.
+ITEM_FIELDS: dict[str, tuple[str, ...]] = {
+    Envelope1Item.SIGNED_MSA: ("signed_msa_pdf",),
+    Envelope1Item.BANK_FACILITY: ("has_bank_facility", "bank_facility_pdf"),
+    Envelope1Item.SUPPLIER_CREDIT: ("has_supplier_credit", "supplier_credit_pdf"),
+    Envelope1Item.NO_ADVANCE: ("no_advance_pdf",),
+    Envelope1Item.CAR_INSURANCE: ("car_insurance_pdf", "car_insurance_expiry"),
+    # Sabah interest and its lead-time range are one dependent answer.
+    Envelope1Item.SABAH_INTEREST: ("sabah_interest", "lead_time_range"),
+    Envelope1Item.LEAD_TIME: ("lead_time_range",),
+    Envelope1Item.SITE_SUPERVISOR: ("site_supervisor_name",),
+    Envelope1Item.TIMESTAMPED_REPORTING: ("accepts_timestamped_reporting",),
+    Envelope1Item.METMALAYSIA_EOT: ("accepts_metmalaysia_eot",),
+    Envelope1Item.QUALITY_PLAN: ("has_quality_plan", "quality_plan_pdf"),
+    Envelope1Item.HSE_PLAN: ("has_hse_plan", "hse_plan_pdf"),
+    Envelope1Item.PAST_PROJECTS: ("has_past_projects",),
+    Envelope1Item.CLIENT_REFERENCES: ("has_client_references", "client_references_pdf"),
+    Envelope1Item.ORG_CHART: ("org_chart_pdf",),
+}
+
+
+def fields_for_items(items: set[str] | None) -> set[str] | None:
+    if items is None:
+        return None
+    fields: set[str] = set()
+    for item in items:
+        fields.update(ITEM_FIELDS.get(item, ()))
+    return fields
+
+
 def _set_bound_value(form: forms.Form, name: str, value: object) -> None:
     """Put a value into a bound form so the re-rendered page keeps it."""
     data = form.data.copy()
@@ -181,11 +212,13 @@ class QuestionnaireStepForm(forms.Form):
         *args,
         submission: Envelope1Submission,
         existing: dict[str, Envelope1Document],
+        allowed_items: set[str] | None = None,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
         self.submission = submission
         self.existing = existing
+        self.allowed_items = allowed_items
 
         for item in self.yes_no_items:
             answer, doc_type = YES_NO_UPLOADS[item]
@@ -214,12 +247,20 @@ class QuestionnaireStepForm(forms.Form):
                 )
 
         self.add_fields()
+        allowed_fields = fields_for_items(allowed_items)
+        if allowed_fields is not None:
+            # Correction mode: everything not returned by Procurement is locked.
+            for name, field in self.fields.items():
+                if name not in allowed_fields:
+                    field.disabled = True
+                    field.required = False
         mark_required_labels(self)
         # Conditionally required (only when "Yes"): still flag them for the vendor
         for item in self.yes_no_items:
             _answer, doc_type = YES_NO_UPLOADS[item]
             field = self.fields[pdf_field_name(doc_type)]
-            field.label = required_label(field.label)
+            if not field.disabled:
+                field.label = required_label(field.label)
 
     def add_fields(self) -> None:
         """Hook for step-specific fields."""

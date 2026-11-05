@@ -17,6 +17,10 @@ class Envelope1Submission(models.Model):
         PENDING_EVALUATION = "pending_evaluation", "Pending evaluation"
         IN_PROGRESS = "in_progress", "In progress"
         PENDING_DIRECTOR = "pending_director_approval", "Pending director approval"
+        RETURNED_FOR_CORRECTION = (
+            "returned_for_correction",
+            "Returned for correction",
+        )
         APPROVED = "approved", "Approved"
         REJECTED = "rejected", "Rejected"
 
@@ -92,6 +96,21 @@ class Envelope1Submission(models.Model):
     )
 
     submitted_at = models.DateTimeField(null=True, blank=True)
+
+    # Return-for-correction loop. Failed items keep their FAIL result so the vendor
+    # and Procurement can see exactly what needs fixing; on resubmission the failed
+    # rows go back to PENDING, while previously passed items stay passed.
+    returned_at = models.DateTimeField(null=True, blank=True)
+    returned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="envelope1_returns",
+    )
+    returned_note = models.TextField(blank=True)
+    correction_round = models.PositiveIntegerField(default=0)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -126,6 +145,10 @@ class Envelope1Submission(models.Model):
             self.Status.SUBMITTED,
             self.Status.PENDING_EVALUATION,
         }
+
+    @property
+    def is_returned_for_correction(self) -> bool:
+        return self.status == self.Status.RETURNED_FOR_CORRECTION
 
 
 class Envelope1Document(models.Model):

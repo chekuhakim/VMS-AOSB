@@ -67,6 +67,8 @@
     <div class="mb-4 rounded-2xl border border-slate-200 bg-white/80 px-5 py-3 text-sm text-slate-600">
       {% if director_review %}
         Read-only evaluation. Approve or reject on the last step.
+      {% elif submission.status == "returned_for_correction" %}
+        Returned to the vendor for correction — waiting for resubmission.
       {% elif submission.status == "pending_director_approval" %}
         Procurement evaluation is complete — awaiting Director approval. Checklist is read-only.
       {% elif submission.status == "approved" or submission.status == "rejected" %}
@@ -143,6 +145,25 @@
       </div>
     </div>
   </form>
+
+  {% if editable and progress.failed %}
+    <section class="mt-5 rounded-2xl border border-amber-200 bg-amber-50/70 px-5 py-5">
+      <p class="text-sm font-semibold text-amber-900">
+        {{ progress.failed }} item{{ progress.failed|pluralize }} failed.
+      </p>
+      <p class="mt-1 text-xs text-amber-800">
+        Return only the failed items to the vendor for correction. Previously passed items stay passed.
+      </p>
+      <form method="post" action="{% url 'staff:envelope1_return_correction' submission.pk %}" class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+        {% csrf_token %}
+        <input type="text" name="note" placeholder="Optional overall note for the vendor"
+               class="flex-1 rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400" />
+        <button type="submit" class="rounded-xl bg-amber-500 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-amber-600">
+          Return for correction
+        </button>
+      </form>
+    </section>
+  {% endif %}
 
   {# Step 6 — final actions #}
   {% if step == last_step and editable %}

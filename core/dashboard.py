@@ -143,6 +143,16 @@ def build_progress_stages(company: Company | None) -> list[StageCard]:
             locked=False,
             href=reverse("envelope1:home"),
         )
+    elif e1.status == Envelope1Submission.Status.RETURNED_FOR_CORRECTION:
+        stage2 = StageCard(
+            number=2,
+            title="Envelope 1",
+            description="Returned for correction — fix the failed items and resubmit.",
+            status_label="Action needed",
+            tone="action",
+            locked=False,
+            href=reverse("envelope1:home"),
+        )
     elif e1.status == Envelope1Submission.Status.REJECTED:
         stage2 = StageCard(
             number=2,

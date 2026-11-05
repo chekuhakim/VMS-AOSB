@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="mx-auto w-full max-w-3xl px-2 py-6 sm:px-0">
+    <div class="mb-6">
+      <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+        Envelope 1 · {{ company.name }}
+      </p>
+      <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900">Corrections needed</h1>
+      <p class="mt-1 text-sm text-slate-600">
+        Procurement returned {{ failed_items|length }} item{{ failed_items|length|pluralize }} for correction.
+        Fix only the items below, then resubmit.
+      </p>
+    </div>
+
+    {% if submission.returned_note %}
+      <div class="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+        <p class="font-semibold">Procurement note</p>
+        <p class="mt-1 whitespace-pre-line">{{ submission.returned_note }}</p>
+      </div>
+    {% endif %}
+
+    <div class="space-y-3">
+      {% for row in failed_items %}
+        <section class="rounded-2xl border border-rose-200 bg-white px-5 py-4 shadow-sm">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-slate-900">{{ row.label }}</p>
+              {% if row.step_title %}
+                <p class="mt-0.5 text-xs text-slate-500">{{ row.step_title }}</p>
+              {% endif %}
+              {% if row.note %}
+                <p class="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-800">
+                  <span class="font-semibold">Remark:</span> {{ row.note }}
+                </p>
+              {% endif %}
+            </div>
+            {% if row.step %}
+              <a href="{% url 'envelope1:wizard' submission.pk row.step %}"
+                 class="inline-flex shrink-0 items-center justify-center rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700">
+                Fix this item
+              </a>
+            {% endif %}
+          </div>
+        </section>
+      {% empty %}
+        <div class="rounded-2xl border border-slate-200 bg-white px-5 py-8 text-center text-sm text-slate-500">
+          There are no failed items to correct.
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="mt-6 flex flex-col-reverse gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
+      <a href="{% url 'core:dashboard' %}"
+         class="inline-flex items-center justify-center rounded-xl bg-peach px-5 py-2.5 text-sm font-semibold text-brand hover:bg-brand-100">
+        Back to dashboard
+      </a>
+      {% if failed_items %}
+        <form method="post" action="{% url 'envelope1:resubmit_correction' submission.pk %}">
+          {% csrf_token %}
+          <button type="submit"
+                  class="inline-flex w-full items-center justify-center rounded-xl bg-brand px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 sm:w-auto">
+            Resubmit for evaluation
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

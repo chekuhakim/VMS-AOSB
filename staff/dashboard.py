@@ -31,6 +31,8 @@ AUDIT_TITLES: dict[str, str] = {
     "envelope1_locked_for_evaluation": "Envelope 1 locked for evaluation",
     "envelope1_item_evaluated": "Checklist item evaluated",
     "envelope1_sent_to_director": "Envelope 1 sent to Director",
+    "envelope1_returned_for_correction": "Envelope 1 returned for correction",
+    "envelope1_correction_resubmitted": "Envelope 1 corrections resubmitted",
     "envelope1_rejected_by_procurement": "Envelope 1 rejected by Procurement",
     "envelope1_director_approved": "Envelope 1 approved by Director",
     "envelope1_director_rejected": "Envelope 1 rejected by Director",
@@ -131,6 +133,8 @@ def _e1_row(sub: Envelope1Submission, *, can_evaluate: bool, can_approve: bool) 
     elif status == S.IN_PROGRESS:
         label, tone = "In Evaluation", "amber"
         action = "Review Now" if can_evaluate else "View Details"
+    elif status == S.RETURNED_FOR_CORRECTION:
+        label, tone, action = "Returned for Correction", "amber", "View Details"
     elif status == S.PENDING_DIRECTOR:
         label, tone = "Awaiting Approval", "red"
         action = "Approve Now" if can_approve else "View Details"
@@ -206,7 +210,12 @@ def build_pipeline() -> list[PipelineStage]:
         .count()
     )
     compliance = Envelope1Submission.objects.filter(
-        status__in=[S.SUBMITTED, S.PENDING_EVALUATION, S.IN_PROGRESS]
+        status__in=[
+            S.SUBMITTED,
+            S.PENDING_EVALUATION,
+            S.IN_PROGRESS,
+            S.RETURNED_FOR_CORRECTION,
+        ]
     ).count()
     director = Envelope1Submission.objects.filter(status=S.PENDING_DIRECTOR).count()
     total = initial + compliance + director

@@ -15,6 +15,14 @@
           </svg>
         </div>
       </div>
+    {% elif submission.status == "returned_for_correction" %}
+      <div class="mx-auto mt-8 flex h-28 w-28 items-center justify-center rounded-full bg-amber-50">
+        <div class="flex h-16 w-16 items-center justify-center rounded-full bg-amber-500 text-white shadow-lg shadow-amber-200">
+          <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008M10.34 3.94l-8.4 14.55A1.5 1.5 0 003.24 21h17.52a1.5 1.5 0 001.3-2.51l-8.4-14.55a1.5 1.5 0 00-2.6 0z" />
+          </svg>
+        </div>
+      </div>
     {% elif submission.status == "rejected" %}
       <div class="mx-auto mt-8 flex h-28 w-28 items-center justify-center rounded-full bg-rose-50">
         <div class="flex h-16 w-16 items-center justify-center rounded-full bg-rose-500 text-white shadow-lg shadow-rose-200">
@@ -46,6 +54,8 @@
         Envelope 1 submitted
       {% elif pending_withdrawal %}
         Withdrawal requested
+      {% elif submission.status == "returned_for_correction" %}
+        Corrections needed
       {% elif submission.status == "pending_director_approval" %}
         Waiting for Director approval
       {% elif submission.status == "approved" %}
@@ -61,6 +71,8 @@
         You can still edit this submission until Procurement starts the check.
       {% elif pending_withdrawal %}
         Your request from {{ pending_withdrawal.created_at|date:"j M Y, g:i A" }} is with Procurement. This submission stays locked until they decide.
+      {% elif submission.status == "returned_for_correction" %}
+        Procurement returned some items for correction. Fix the failed items and resubmit for evaluation.
       {% elif submission.status == "pending_director_approval" %}
         Procurement has finished the check. This submission stays locked until the Director decides. Request a withdrawal if you need to change it first.
       {% elif submission.status == "approved" %}
@@ -83,6 +95,11 @@
             Edit
           </button>
         </form>
+      {% elif submission.status == "returned_for_correction" %}
+        <a href="{% url 'envelope1:corrections' submission.pk %}"
+           class="inline-flex w-full items-center justify-center rounded-xl bg-amber-500 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2">
+          Fix failed items
+        </a>
       {% elif pending_withdrawal %}
         <p class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
           Waiting for Procurement

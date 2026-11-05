@@ -15,6 +15,16 @@ urlpatterns = [
         name="wizard",
     ),
     path(
+        "envelope-1/<int:pk>/corrections/",
+        views.envelope1_corrections,
+        name="corrections",
+    ),
+    path(
+        "envelope-1/<int:pk>/corrections/resubmit/",
+        views.envelope1_resubmit_correction,
+        name="resubmit_correction",
+    ),
+    path(
         "envelope-1/<int:pk>/draft-msa/",
         views.download_draft_msa,
         name="draft_msa",

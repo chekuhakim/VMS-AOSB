@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from accounts.models import Notification
 from accounts.notifications import notify_event, staff_recipients
-from accounts.roles import DIRECTOR
+from accounts.roles import DIRECTOR, PROCUREMENT
 from audit.models import AuditLog
 from audit.services import write_audit
 from envelope1.checklist import (
@@ -46,6 +46,8 @@ def _notify_vendor(
     title: str,
     body: str,
     level: str = Notification.Level.INFO,
+    link_url: str | None = None,
+    link_label: str = "Open Envelope 1",
 ) -> None:
     """Tell the company owner about an Envelope 1 outcome (one inbox row per topic)."""
     company = submission.company
@@ -55,8 +57,8 @@ def _notify_vendor(
         title=f"{title} — {company.name}",
         body=body,
         level=level,
-        link_url=reverse("envelope1:home"),
-        link_label="Open Envelope 1",
+        link_url=link_url or reverse("envelope1:home"),
+        link_label=link_label,
     )
 
 
@@ -204,6 +206,155 @@ def send_to_director(
         body="Procurement has passed every checklist item and recommends approval.",
         link_url=reverse("staff:approval_queue"),
         link_label="Open approval queue",
+    )
+    return submission
+
+
+def failed_item_details(submission: Envelope1Submission) -> list[dict]:
+    """Failed checklist items in wizard order, with the remark Procurement left."""
+    labels = dict(Envelope1Item.choices)
+    step_for = {item: step for step, items in STEP_ITEMS.items() for item in items}
+    order = {item: i for i, item in enumerate(ALL_ITEMS)}
+    rows = sorted(
+        submission.item_evaluations.filter(
+            result=Envelope1ItemEvaluation.Result.FAIL
+        ).select_related("evaluated_by"),
+        key=lambda ev: order.get(ev.doc_type, len(order)),
+    )
+    return [
+        {
+            "item": ev.doc_type,
+            "label": labels.get(ev.doc_type, ev.doc_type),
+            "step": step_for.get(ev.doc_type),
+            "note": ev.note,
+            "evaluated_by": ev.evaluated_by,
+            "evaluated_at": ev.evaluated_at,
+        }
+        for ev in rows
+    ]
+
+
+@transaction.atomic
+def return_to_vendor(
+    *,
+    submission: Envelope1Submission,
+    actor: AbstractBaseUser,
+    note: str = "",
+    request: HttpRequest | None = None,
+) -> Envelope1Submission:
+    """Return a pack to the vendor so only the failed items can be corrected."""
+    if submission.status != Envelope1Submission.Status.IN_PROGRESS:
+        raise ValueError("Only an in-progress evaluation can be returned for correction.")
+    ensure_evaluation_rows(submission)
+    failed = failed_item_details(submission)
+    if not failed:
+        raise ValueError("Mark at least one item as Fail before returning it.")
+    submission.status = Envelope1Submission.Status.RETURNED_FOR_CORRECTION
+    submission.returned_at = timezone.now()
+    submission.returned_by = actor  # type: ignore[assignment]
+    submission.returned_note = (note or "").strip()
+    # The vendor needs an unlocked pack to make the corrections.
+    submission.locked_at = None
+    submission.locked_by = None
+    submission.save(
+        update_fields=[
+            "status",
+            "returned_at",
+            "returned_by",
+            "returned_note",
+            "locked_at",
+            "locked_by",
+            "updated_at",
+        ]
+    )
+    write_audit(
+        category=AuditLog.Category.EVALUATION,
+        action="envelope1_returned_for_correction",
+        actor=actor,
+        request=request,
+        changes={
+            "status": submission.status,
+            "failed_items": [row["item"] for row in failed],
+            "note": submission.returned_note[:300],
+        },
+        object_type="Envelope1Submission",
+        object_id=submission.pk,
+    )
+    summary = "; ".join(
+        f"{row['label']} — {row['note']}" if row["note"] else row["label"]
+        for row in failed
+    )
+    if submission.returned_note:
+        summary = f"{summary}\n\nOverall note: {submission.returned_note}"
+    _notify_vendor(
+        submission,
+        topic="correction",
+        title="Envelope 1 returned for correction",
+        body=f"Fix these items and resubmit: {summary}",
+        level=Notification.Level.WARNING,
+        link_url=reverse("envelope1:corrections", args=[submission.pk]),
+        link_label="Fix failed items",
+    )
+    return submission
+
+
+@transaction.atomic
+def resubmit_correction(
+    *,
+    submission: Envelope1Submission,
+    actor: AbstractBaseUser,
+    request: HttpRequest | None = None,
+) -> Envelope1Submission:
+    """Vendor resubmits after fixing failed items; only those rows return to pending."""
+    if submission.status != Envelope1Submission.Status.RETURNED_FOR_CORRECTION:
+        raise ValueError("This Envelope 1 is not waiting for corrections.")
+    reset = submission.item_evaluations.filter(
+        result=Envelope1ItemEvaluation.Result.FAIL
+    ).update(
+        result=Envelope1ItemEvaluation.Result.PENDING,
+        evaluated_by=None,
+        evaluated_at=None,
+    )
+    if not reset:
+        raise ValueError("There are no failed items to resubmit.")
+    submission.status = Envelope1Submission.Status.PENDING_EVALUATION
+    submission.submitted_at = timezone.now()
+    submission.correction_round += 1
+    submission.locked_at = None
+    submission.locked_by = None
+    submission.save(
+        update_fields=[
+            "status",
+            "submitted_at",
+            "correction_round",
+            "locked_at",
+            "locked_by",
+            "updated_at",
+        ]
+    )
+    write_audit(
+        category=AuditLog.Category.EVALUATION,
+        action="envelope1_correction_resubmitted",
+        actor=actor,
+        request=request,
+        changes={
+            "status": submission.status,
+            "correction_round": submission.correction_round,
+            "reopened_items": reset,
+        },
+        object_type="Envelope1Submission",
+        object_id=submission.pk,
+    )
+    notify_event(
+        users=staff_recipients(PROCUREMENT),
+        dedupe_key=f"staff-e1-{submission.pk}-correction-{submission.correction_round}",
+        title=f"Envelope 1 corrections resubmitted — {submission.company.name}",
+        body=(
+            f"Correction round {submission.correction_round} is ready for re-check. "
+            "Previously passed items stay passed."
+        ),
+        link_url=reverse("staff:envelope1_detail", args=[submission.pk]),
+        link_label="Re-check corrections",
     )
     return submission
 
