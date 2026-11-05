@@ -216,6 +216,57 @@ class SubmittedPackLockTests(TestCase):
         self.assertFalse(self.submission.withdrawal_requests.exists())
 
 
+class LeadTimeRangeTests(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.user = make_user("lead-time-vendor")
+        cls.company = make_company(cls.user)
+        cls.submission = make_submission(cls.company)
+        cls.url = reverse("envelope1:wizard", args=[cls.submission.pk, 4])
+
+    def setUp(self) -> None:
+        self.client = vendor_client(self.user, self.company)
+
+    def _post(self, **overrides: str):
+        data = {
+            "sabah_interest": "yes",
+            "lead_time_range": "30_60",
+            "sup-TOTAL_FORMS": "1",
+            "sup-INITIAL_FORMS": "0",
+            "sup-MIN_NUM_FORMS": "0",
+            "sup-MAX_NUM_FORMS": "1000",
+            "sup-0-structure": "Steel monopole",
+            "sup-0-supplier_name": "Test Supplier Sdn Bhd",
+        }
+        data.update(overrides)
+        return self.client.post(self.url, data)
+
+    def test_sabah_interest_requires_a_lead_time_range(self) -> None:
+        response = self._post(lead_time_range="")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Choose a lead-time range for Sabah work.")
+        self.submission.refresh_from_db()
+        self.assertEqual(self.submission.lead_time_range, "")
+
+    def test_sabah_interest_saves_the_selected_range(self) -> None:
+        response = self._post(lead_time_range="60_90")
+        self.assertRedirects(
+            response, reverse("envelope1:wizard", args=[self.submission.pk, 5])
+        )
+        self.submission.refresh_from_db()
+        self.assertTrue(self.submission.sabah_interest)
+        self.assertEqual(self.submission.lead_time_range, "60_90")
+
+    def test_no_sabah_interest_clears_the_range(self) -> None:
+        response = self._post(sabah_interest="no", lead_time_range="30_60")
+        self.assertRedirects(
+            response, reverse("envelope1:wizard", args=[self.submission.pk, 5])
+        )
+        self.submission.refresh_from_db()
+        self.assertFalse(self.submission.sabah_interest)
+        self.assertEqual(self.submission.lead_time_range, "")
+
+
 class DraftMsaPdfTests(TestCase):
     def test_download_is_the_agreement_filled_with_party_details(self) -> None:
         submission = Envelope1Submission(

@@ -27,7 +27,7 @@ ITEM_HELP: dict[str, str] = {
         "List the main structures you supply and the supplier for each."
     ),
     Envelope1Item.LEAD_TIME: (
-        "Fill in either route or both, in calendar days."
+        "Choose the typical Sabah delivery range. Only required if you are interested in Sabah work."
     ),
     Envelope1Item.SITE_SUPERVISOR: (
         "Full name of the dedicated site supervisor assigned to Alpha Orange works."
@@ -125,7 +125,9 @@ DECLARATIONS: dict[str, str] = {
     ),
 }
 
-LEAD_TIME_DESCRIPTION = "How long does it take from PO to structure on site?"
+LEAD_TIME_DESCRIPTION = "Typical time from purchase order to structure on site for Sabah work."
+LEAD_TIME_RANGE_LABEL = "Typical Sabah delivery lead time"
+# Legacy labels: kept so older submissions with exact-day values still display.
 LEAD_TIME_SEA_LABEL = "Sabah sea freight to Kota Kinabalu"
 LEAD_TIME_SEMENANJUNG_LABEL = "Semenanjung delivery to the site"
 

@@ -14,8 +14,7 @@ from envelope1.checklist import (
     DECLARATIONS,
     EXPIRY_REQUIRED_TYPES,
     ITEM_HELP,
-    LEAD_TIME_SEA_LABEL,
-    LEAD_TIME_SEMENANJUNG_LABEL,
+    LEAD_TIME_RANGE_LABEL,
     MIN_FINANCIAL_STATEMENTS,
     QUESTIONS,
     REQUIRED_UPLOADS,
@@ -67,16 +66,6 @@ _CELL_FILE = {
     ),
     "accept": "application/pdf",
 }
-_DAYS = {
-    "class": (
-        "w-24 rounded-lg border border-slate-200 bg-white px-3 py-2 text-center text-sm "
-        "shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-    ),
-    "min": 1,
-    "max": 365,
-    "inputmode": "numeric",
-}
-
 YES_NO_CHOICES = (("yes", "Yes"), ("no", "No"))
 
 UPLOAD_LABELS: dict[str, str] = {
@@ -354,38 +343,29 @@ class Step4LogisticsForm(QuestionnaireStepForm):
     def add_fields(self) -> None:
         self.fields["sabah_interest"] = _yes_no_field(QUESTIONS[Envelope1Item.SABAH_INTEREST])
         self.initial.setdefault("sabah_interest", _yes_no_initial(self.submission.sabah_interest))
-        for name, label in (
-            ("lead_time_sea_freight_days", LEAD_TIME_SEA_LABEL),
-            ("lead_time_semenanjung_days", LEAD_TIME_SEMENANJUNG_LABEL),
-        ):
-            self.fields[name] = forms.IntegerField(
-                label=label,
-                required=False,
-                min_value=1,
-                max_value=365,
-                widget=forms.NumberInput(attrs=_DAYS),
-            )
-            self.initial.setdefault(name, getattr(self.submission, name))
+        self.fields["lead_time_range"] = forms.ChoiceField(
+            label=LEAD_TIME_RANGE_LABEL,
+            choices=[("", "Select a range"), *Envelope1Submission.LeadTimeRange.choices],
+            required=False,
+            widget=forms.Select(attrs=_INPUT),
+            help_text="Only required if you are interested in Sabah work.",
+        )
+        self.initial.setdefault("lead_time_range", self.submission.lead_time_range)
 
     def clean(self) -> dict[str, Any]:
         cleaned = super().clean()
-        if (
-            cleaned.get("lead_time_sea_freight_days") is None
-            and cleaned.get("lead_time_semenanjung_days") is None
-            and "lead_time_sea_freight_days" not in self.errors
-            and "lead_time_semenanjung_days" not in self.errors
-        ):
-            self.add_error(
-                "lead_time_sea_freight_days",
-                "Fill in at least one lead time (sea freight or Semenanjung delivery).",
-            )
+        interested = cleaned.get("sabah_interest")
+        if interested is True and not cleaned.get("lead_time_range"):
+            self.add_error("lead_time_range", "Choose a lead-time range for Sabah work.")
+        elif interested is False:
+            # A "No" answer makes the range question not applicable.
+            cleaned["lead_time_range"] = ""
         return cleaned
 
     def save_fields(self) -> list[str]:
-        names = ["sabah_interest", "lead_time_sea_freight_days", "lead_time_semenanjung_days"]
-        for name in names:
-            setattr(self.submission, name, self.cleaned_data.get(name))
-        return names
+        self.submission.sabah_interest = self.cleaned_data.get("sabah_interest")
+        self.submission.lead_time_range = self.cleaned_data.get("lead_time_range") or ""
+        return ["sabah_interest", "lead_time_range"]
 
 
 class Step5QualityForm(QuestionnaireStepForm):

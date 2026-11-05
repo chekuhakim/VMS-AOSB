@@ -50,7 +50,21 @@ class Envelope1Submission(models.Model):
     has_supplier_credit = models.BooleanField(null=True, blank=True)
 
     # --- Step 4: Logistics ---
+    class LeadTimeRange(models.TextChoices):
+        UNDER_30 = "under_30", "Under 30 days"
+        DAYS_30_60 = "30_60", "30–60 days"
+        DAYS_60_90 = "60_90", "60–90 days"
+        OVER_90 = "over_90", "More than 90 days"
+
     sabah_interest = models.BooleanField(null=True, blank=True)
+    lead_time_range = models.CharField(
+        max_length=20,
+        choices=LeadTimeRange.choices,
+        blank=True,
+        help_text="Typical Sabah delivery range. Only asked when the vendor is interested in Sabah work.",
+    )
+    # Legacy exact-day values retained for historical submissions. New responses
+    # use lead_time_range because a single number is not comparable across scopes.
     lead_time_sea_freight_days = models.PositiveSmallIntegerField(null=True, blank=True)
     lead_time_semenanjung_days = models.PositiveSmallIntegerField(null=True, blank=True)
 

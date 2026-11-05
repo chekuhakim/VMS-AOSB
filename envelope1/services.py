@@ -67,8 +67,12 @@ def missing_items(submission: Envelope1Submission) -> list[str]:
         elif item == Envelope1Item.PRIMARY_SUPPLIERS:
             done = submission.primary_suppliers.exists()
         elif item == Envelope1Item.LEAD_TIME:
-            done = bool(
-                submission.lead_time_sea_freight_days or submission.lead_time_semenanjung_days
+            # Not applicable when the vendor has no Sabah interest. Legacy exact-day
+            # values still count so older submissions stay complete.
+            done = submission.sabah_interest is False or bool(
+                submission.lead_time_range
+                or submission.lead_time_sea_freight_days
+                or submission.lead_time_semenanjung_days
             )
         elif item == Envelope1Item.SITE_SUPERVISOR:
             done = bool(submission.site_supervisor_name.strip())

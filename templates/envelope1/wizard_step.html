@@ -126,19 +126,17 @@
         </section>
         <section class="rounded-xl border border-slate-100 bg-cream/40 px-4 py-4 sm:px-5">
           {% include "envelope1/components/item_heading.html" with title=item_labels.lead_time tip=item_help.lead_time %}
-          <p class="mt-1 text-sm text-slate-600">{{ lead_time_description }} <span class="text-xs text-slate-500">(fill in either or both <span class="text-rose-600">*</span>)</span></p>
-          <div class="mt-3 space-y-2">
-            {% for field in form %}
-              {% if field.name == "lead_time_sea_freight_days" or field.name == "lead_time_semenanjung_days" %}
-                <div class="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5">
-                  <label for="{{ field.id_for_label }}" class="min-w-[12rem] flex-1 text-sm text-slate-700">{{ field.label }}</label>
-                  <span class="text-slate-400" aria-hidden="true">=</span>
-                  {{ field }}
-                  <span class="text-sm text-slate-500">days</span>
-                </div>
-                {% if field.errors %}<p class="text-xs text-rose-600">{{ field.errors.0 }}</p>{% endif %}
-              {% endif %}
-            {% endfor %}
+          <p class="mt-1 text-sm text-slate-600">{{ lead_time_description }}</p>
+          <p class="mt-1 text-xs text-slate-500">Only required if you are interested in Sabah work.</p>
+          <div
+            data-reveal-for="{{ form.sabah_interest.html_name }}"
+            class="{% if form.sabah_interest.value != 'yes' %}hidden{% endif %} mt-3 sm:max-w-md"
+          >
+            <label for="{{ form.lead_time_range.id_for_label }}" class="block text-xs font-medium text-slate-600">
+              {{ form.lead_time_range.label }}
+            </label>
+            {{ form.lead_time_range }}
+            {% if form.lead_time_range.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.lead_time_range.errors.0 }}</p>{% endif %}
           </div>
         </section>
 

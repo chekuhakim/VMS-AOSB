@@ -16,6 +16,7 @@ from audit.services import write_audit
 from envelope1.checklist import (
     ALL_ITEMS,
     DECLARATIONS,
+    LEAD_TIME_RANGE_LABEL,
     LEAD_TIME_SEA_LABEL,
     LEAD_TIME_SEMENANJUNG_LABEL,
     MIN_FINANCIAL_STATEMENTS,
@@ -435,11 +436,20 @@ def item_detail(
     elif item == Envelope1Item.LEAD_TIME:
         sea = submission.lead_time_sea_freight_days
         semenanjung = submission.lead_time_semenanjung_days
-        if sea:
-            detail["lines"].append(f"{LEAD_TIME_SEA_LABEL} = {sea} days")
-        if semenanjung:
-            detail["lines"].append(f"{LEAD_TIME_SEMENANJUNG_LABEL} = {semenanjung} days")
-        detail["missing"] = not (sea or semenanjung)
+        if submission.sabah_interest is False:
+            detail["lines"].append("Not applicable — no Sabah interest.")
+        elif submission.lead_time_range:
+            detail["lines"].append(
+                f"{LEAD_TIME_RANGE_LABEL} = {submission.get_lead_time_range_display()}"
+            )
+        else:
+            if sea:
+                detail["lines"].append(f"{LEAD_TIME_SEA_LABEL} = {sea} days")
+            if semenanjung:
+                detail["lines"].append(f"{LEAD_TIME_SEMENANJUNG_LABEL} = {semenanjung} days")
+        detail["missing"] = submission.sabah_interest is not False and not (
+            submission.lead_time_range or sea or semenanjung
+        )
     elif item == Envelope1Item.SITE_SUPERVISOR:
         name = submission.site_supervisor_name.strip()
         detail["lines"] = [name] if name else []
