@@ -62,7 +62,8 @@
             Save MSA party details in Step 1 before downloading the draft.
           {% endif %}
         </div>
-        <div>
+        <div class="rounded-xl border px-4 py-4 sm:px-5 {% if 'signed_msa' in correction_failed %}border-amber-300 bg-amber-50/80 ring-1 ring-amber-200{% else %}border-transparent{% endif %}">
+          {% include "envelope1/components/correction_flag.html" with item="signed_msa" %}
           <div class="flex items-center gap-2">
             <label for="{{ form.signed_msa_pdf.id_for_label }}" class="block text-sm font-medium text-slate-700">
               {{ form.signed_msa_pdf.label }}
@@ -82,7 +83,8 @@
         </div>
 
       {% elif step == 3 and form %}
-        <section class="rounded-xl border border-slate-100 bg-cream/40 px-4 py-4 sm:px-5">
+        <section class="rounded-xl border px-4 py-4 sm:px-5 {% if 'audited_financials' in correction_failed %}border-amber-300 bg-amber-50/80 ring-1 ring-amber-200{% else %}border-slate-100 bg-cream/40{% endif %}">
+          {% include "envelope1/components/correction_flag.html" with item="audited_financials" %}
           {% include "envelope1/components/item_heading.html" with title=item_labels.audited_financials tip=item_help.audited_financials %}
           <p class="mb-3 mt-1 text-xs text-slate-500">Add one row per financial year — at least the last 2 years.</p>
           {% if table_locked %}
@@ -91,15 +93,18 @@
             {% include "envelope1/components/row_table.html" with formset=row_formset add_label="Add financial statement" %}
           {% endif %}
         </section>
-        <section class="rounded-xl border border-slate-100 bg-cream/40 px-4 py-4 sm:px-5">
+        <section class="rounded-xl border px-4 py-4 sm:px-5 {% if 'bank_facility' in correction_failed %}border-amber-300 bg-amber-50/80 ring-1 ring-amber-200{% else %}border-slate-100 bg-cream/40{% endif %}">
+          {% include "envelope1/components/correction_flag.html" with item="bank_facility" %}
           {% include "envelope1/components/item_heading.html" with title=item_labels.bank_facility tip=item_help.bank_facility %}
           <div class="mt-3">{% include "envelope1/components/yes_no_upload.html" with answer=form.has_bank_facility upload=form.bank_facility_pdf doc=docs.bank_facility %}</div>
         </section>
-        <section class="rounded-xl border border-slate-100 bg-cream/40 px-4 py-4 sm:px-5">
+        <section class="rounded-xl border px-4 py-4 sm:px-5 {% if 'supplier_credit' in correction_failed %}border-amber-300 bg-amber-50/80 ring-1 ring-amber-200{% else %}border-slate-100 bg-cream/40{% endif %}">
+          {% include "envelope1/components/correction_flag.html" with item="supplier_credit" %}
           {% include "envelope1/components/item_heading.html" with title=item_labels.supplier_credit tip=item_help.supplier_credit %}
           <div class="mt-3">{% include "envelope1/components/yes_no_upload.html" with answer=form.has_supplier_credit upload=form.supplier_credit_pdf doc=docs.supplier_credit %}</div>
         </section>
-        <section class="rounded-xl border border-slate-100 bg-cream/40 px-4 py-4 sm:px-5">
+        <section class="rounded-xl border px-4 py-4 sm:px-5 {% if 'no_advance' in correction_failed %}border-amber-300 bg-amber-50/80 ring-1 ring-amber-200{% else %}border-slate-100 bg-cream/40{% endif %}">
+          {% include "envelope1/components/correction_flag.html" with item="no_advance" %}
           {% include "envelope1/components/item_heading.html" with title=item_labels.no_advance tip=item_help.no_advance %}
           <div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start">
             <div class="sm:w-56 sm:shrink-0">
@@ -121,17 +126,20 @@
             </div>
           </div>
         </section>
-        <section class="rounded-xl border border-slate-100 bg-cream/40 px-4 py-4 sm:px-5">
+        <section class="rounded-xl border px-4 py-4 sm:px-5 {% if 'car_insurance' in correction_failed %}border-amber-300 bg-amber-50/80 ring-1 ring-amber-200{% else %}border-slate-100 bg-cream/40{% endif %}">
+          {% include "envelope1/components/correction_flag.html" with item="car_insurance" %}
           {% include "envelope1/components/item_heading.html" with title=item_labels.car_insurance tip=item_help.car_insurance %}
           <div class="mt-3">{% include "envelope1/components/upload_field.html" with field=form.car_insurance_pdf doc=docs.car_insurance expiry=form.car_insurance_expiry %}</div>
         </section>
 
       {% elif step == 4 and form %}
-        <section class="rounded-xl border border-slate-100 bg-cream/40 px-4 py-4 sm:px-5">
+        <section class="rounded-xl border px-4 py-4 sm:px-5 {% if 'sabah_interest' in correction_failed %}border-amber-300 bg-amber-50/80 ring-1 ring-amber-200{% else %}border-slate-100 bg-cream/40{% endif %}">
+          {% include "envelope1/components/correction_flag.html" with item="sabah_interest" %}
           {% include "envelope1/components/item_heading.html" with title=item_labels.sabah_interest %}
           <div class="mt-3">{% include "envelope1/components/yes_no.html" with field=form.sabah_interest %}</div>
         </section>
-        <section class="rounded-xl border border-slate-100 bg-cream/40 px-4 py-4 sm:px-5">
+        <section class="rounded-xl border px-4 py-4 sm:px-5 {% if 'primary_suppliers' in correction_failed %}border-amber-300 bg-amber-50/80 ring-1 ring-amber-200{% else %}border-slate-100 bg-cream/40{% endif %}">
+          {% include "envelope1/components/correction_flag.html" with item="primary_suppliers" %}
           {% include "envelope1/components/item_heading.html" with title=item_labels.primary_suppliers tip=item_help.primary_suppliers %}
           <div class="mt-3">
             {% if table_locked %}
@@ -141,7 +149,8 @@
             {% endif %}
           </div>
         </section>
-        <section class="rounded-xl border border-slate-100 bg-cream/40 px-4 py-4 sm:px-5">
+        <section class="rounded-xl border px-4 py-4 sm:px-5 {% if 'lead_time' in correction_failed %}border-amber-300 bg-amber-50/80 ring-1 ring-amber-200{% else %}border-slate-100 bg-cream/40{% endif %}">
+          {% include "envelope1/components/correction_flag.html" with item="lead_time" %}
           {% include "envelope1/components/item_heading.html" with title=item_labels.lead_time tip=item_help.lead_time %}
           <p class="mt-1 text-sm text-slate-600">{{ lead_time_description }}</p>
           <p class="mt-1 text-xs text-slate-500">Only required if you are interested in Sabah work.</p>
@@ -158,7 +167,8 @@
         </section>
 
       {% elif step == 5 and form %}
-        <section class="rounded-xl border border-slate-100 bg-cream/40 px-4 py-4 sm:px-5">
+        <section class="rounded-xl border px-4 py-4 sm:px-5 {% if 'site_supervisor' in correction_failed %}border-amber-300 bg-amber-50/80 ring-1 ring-amber-200{% else %}border-slate-100 bg-cream/40{% endif %}">
+          {% include "envelope1/components/correction_flag.html" with item="site_supervisor" %}
           {% include "envelope1/components/item_heading.html" with title=item_labels.site_supervisor tip=item_help.site_supervisor %}
           <div class="mt-3 sm:max-w-md">
             <label for="{{ form.site_supervisor_name.id_for_label }}" class="block text-xs font-medium text-slate-600">{{ form.site_supervisor_name.label }}</label>
@@ -166,25 +176,30 @@
             {% if form.site_supervisor_name.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.site_supervisor_name.errors.0 }}</p>{% endif %}
           </div>
         </section>
-        <section class="rounded-xl border border-slate-100 bg-cream/40 px-4 py-4 sm:px-5">
+        <section class="rounded-xl border px-4 py-4 sm:px-5 {% if 'timestamped_reporting' in correction_failed %}border-amber-300 bg-amber-50/80 ring-1 ring-amber-200{% else %}border-slate-100 bg-cream/40{% endif %}">
+          {% include "envelope1/components/correction_flag.html" with item="timestamped_reporting" %}
           {% include "envelope1/components/item_heading.html" with title=item_labels.timestamped_reporting %}
           <div class="mt-3">{% include "envelope1/components/declaration_box.html" with field=form.accepts_timestamped_reporting %}</div>
         </section>
-        <section class="rounded-xl border border-slate-100 bg-cream/40 px-4 py-4 sm:px-5">
+        <section class="rounded-xl border px-4 py-4 sm:px-5 {% if 'metmalaysia_eot' in correction_failed %}border-amber-300 bg-amber-50/80 ring-1 ring-amber-200{% else %}border-slate-100 bg-cream/40{% endif %}">
+          {% include "envelope1/components/correction_flag.html" with item="metmalaysia_eot" %}
           {% include "envelope1/components/item_heading.html" with title=item_labels.metmalaysia_eot %}
           <div class="mt-3">{% include "envelope1/components/declaration_box.html" with field=form.accepts_metmalaysia_eot %}</div>
         </section>
-        <section class="rounded-xl border border-slate-100 bg-cream/40 px-4 py-4 sm:px-5">
+        <section class="rounded-xl border px-4 py-4 sm:px-5 {% if 'quality_plan' in correction_failed %}border-amber-300 bg-amber-50/80 ring-1 ring-amber-200{% else %}border-slate-100 bg-cream/40{% endif %}">
+          {% include "envelope1/components/correction_flag.html" with item="quality_plan" %}
           {% include "envelope1/components/item_heading.html" with title=item_labels.quality_plan tip=item_help.quality_plan %}
           <div class="mt-3">{% include "envelope1/components/yes_no_upload.html" with answer=form.has_quality_plan upload=form.quality_plan_pdf doc=docs.quality_plan %}</div>
         </section>
-        <section class="rounded-xl border border-slate-100 bg-cream/40 px-4 py-4 sm:px-5">
+        <section class="rounded-xl border px-4 py-4 sm:px-5 {% if 'hse_plan' in correction_failed %}border-amber-300 bg-amber-50/80 ring-1 ring-amber-200{% else %}border-slate-100 bg-cream/40{% endif %}">
+          {% include "envelope1/components/correction_flag.html" with item="hse_plan" %}
           {% include "envelope1/components/item_heading.html" with title=item_labels.hse_plan tip=item_help.hse_plan %}
           <div class="mt-3">{% include "envelope1/components/yes_no_upload.html" with answer=form.has_hse_plan upload=form.hse_plan_pdf doc=docs.hse_plan %}</div>
         </section>
 
       {% elif step == 6 and form %}
-        <section class="rounded-xl border border-slate-100 bg-cream/40 px-4 py-4 sm:px-5">
+        <section class="rounded-xl border px-4 py-4 sm:px-5 {% if 'past_projects' in correction_failed %}border-amber-300 bg-amber-50/80 ring-1 ring-amber-200{% else %}border-slate-100 bg-cream/40{% endif %}">
+          {% include "envelope1/components/correction_flag.html" with item="past_projects" %}
           {% include "envelope1/components/item_heading.html" with title=item_labels.past_projects tip=item_help.past_projects %}
           <div class="mt-3">
             {% include "envelope1/components/yes_no.html" with field=form.has_past_projects %}
@@ -197,11 +212,13 @@
             </div>
           </div>
         </section>
-        <section class="rounded-xl border border-slate-100 bg-cream/40 px-4 py-4 sm:px-5">
+        <section class="rounded-xl border px-4 py-4 sm:px-5 {% if 'client_references' in correction_failed %}border-amber-300 bg-amber-50/80 ring-1 ring-amber-200{% else %}border-slate-100 bg-cream/40{% endif %}">
+          {% include "envelope1/components/correction_flag.html" with item="client_references" %}
           {% include "envelope1/components/item_heading.html" with title=item_labels.client_references tip=item_help.client_references %}
           <div class="mt-3">{% include "envelope1/components/yes_no_upload.html" with answer=form.has_client_references upload=form.client_references_pdf doc=docs.client_references %}</div>
         </section>
-        <section class="rounded-xl border border-slate-100 bg-cream/40 px-4 py-4 sm:px-5">
+        <section class="rounded-xl border px-4 py-4 sm:px-5 {% if 'org_chart' in correction_failed %}border-amber-300 bg-amber-50/80 ring-1 ring-amber-200{% else %}border-slate-100 bg-cream/40{% endif %}">
+          {% include "envelope1/components/correction_flag.html" with item="org_chart" %}
           {% include "envelope1/components/item_heading.html" with title=item_labels.org_chart tip=item_help.org_chart %}
           <p class="mt-1 text-xs text-slate-500">Please upload your company's organisation chart.</p>
           <div class="mt-3">{% include "envelope1/components/upload_field.html" with field=form.org_chart_pdf doc=docs.org_chart %}</div>

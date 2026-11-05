@@ -261,6 +261,7 @@ class EnvelopeSegregationOfDutiesTests(TestCase):
         allowed = vendor.get(reverse("envelope1:wizard", args=[self.submission.pk, 5]))
         self.assertEqual(allowed.status_code, 200)
         self.assertContains(allowed, "Correction mode")
+        self.assertContains(allowed, "Needs correction", count=1)
 
     def test_only_procurement_decides_withdrawals(self) -> None:
         Envelope1Submission.objects.filter(pk=self.submission.pk).update(status=S.IN_PROGRESS)
