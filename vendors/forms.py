@@ -36,7 +36,7 @@ _FILE = {
 }
 _RADIO = {"class": "h-4 w-4 border-slate-300 text-brand focus:ring-brand"}
 
-MAX_PDF_BYTES = 100 * 1024 * 1024  # 100 MB
+MAX_PDF_BYTES = 95 * 1024 * 1024  # 95 MB — safely under Cloudflare's 100 MB request limit
 MAX_PDF_MB = MAX_PDF_BYTES // (1024 * 1024)
 
 CIDB_GRADE_CHOICES = [
