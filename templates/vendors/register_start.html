@@ -22,7 +22,7 @@
             name="name"
             id="id_name"
             required
-            value="{% if sample_enabled %}{{ sample_name }}{% endif %}"
+            value=""
             class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
             placeholder="e.g. Cahaya Sdn Bhd"
           />
@@ -34,25 +34,6 @@
           Continue to step 1
         </button>
       </form>
-
-      {% if sample_enabled %}
-        <div class="mt-5 rounded-xl border border-dashed border-brand/30 bg-brand-50/50 px-4 py-3">
-          <p class="text-xs font-medium text-slate-700">Testing shortcut (DEBUG only)</p>
-          <p class="mt-1 text-xs text-slate-500">
-            Loads a full Malaysian sample company (profile, SSM, CIDB, ST, LHDN, HSE + sample PDFs).
-          </p>
-          <form method="post" class="mt-3">
-            {% csrf_token %}
-            <input type="hidden" name="use_sample" value="1" />
-            <button
-              type="submit"
-              class="w-full rounded-xl border border-brand/30 bg-white px-4 py-2.5 text-sm font-semibold text-brand shadow-sm hover:bg-brand-50"
-            >
-              Load sample company data
-            </button>
-          </form>
-        </div>
-      {% endif %}
 
       <p class="mt-4 text-center text-sm text-slate-500">
         <a href="{% url 'vendors:your_company' %}" class="font-medium text-brand hover:text-brand-700">

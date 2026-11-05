@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 from django.core import mail
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from accounts.models import Notification
 from accounts.roles import DIRECTOR, PROCUREMENT
-from core.testing import make_company, make_user, vendor_client
-from vendors.models import Company
+from core.testing import make_company, make_user, pdf, vendor_client
+from vendors.models import Company, CompanyDocument
+from vendors.rules import evaluate_company_registration
 
 
 class CompanyIsolationTests(TestCase):
@@ -43,6 +47,65 @@ class CompanyIsolationTests(TestCase):
         make_company(self.bob, status=Company.RegistrationStatus.DRAFT)
         page = self.bob_client.get(reverse("vendors:your_company"))
         self.assertNotContains(page, reverse("vendors:company_detail", args=[self.alice_co.pk]))
+
+
+class RegistrationUploadKeptTests(TestCase):
+    def test_cidb_pdf_survives_a_missing_grade(self) -> None:
+        owner = make_user("cidb-owner")
+        company = make_company(owner, status=Company.RegistrationStatus.DRAFT)
+        company.documents.filter(doc_type=CompanyDocument.DocType.CIDB).delete()
+        company.cidb_grade = ""
+        company.save(update_fields=["cidb_grade"])
+        expiry = (timezone.localdate() + timedelta(days=40)).isoformat()
+        response = vendor_client(owner, company).post(
+            reverse("vendors:wizard_step", args=[company.pk, 3]),
+            {
+                "cidb_registration_number": "CIDB-KEEP-1",
+                "cidb_grade": "",
+                "cidb_certificate_expiry": expiry,
+                "cidb_pdf": pdf("cidb-cert.pdf"),
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "CIDB PDF already on file")
+        self.assertTrue(
+            company.documents.filter(
+                doc_type=CompanyDocument.DocType.CIDB,
+                original_filename="cidb-cert.pdf",
+            ).exists()
+        )
+
+    def test_no_cidb_registration_skips_certificate_fields(self) -> None:
+        owner = make_user("no-cidb-owner")
+        company = make_company(owner, status=Company.RegistrationStatus.DRAFT)
+        self.assertTrue(company.documents.filter(doc_type=CompanyDocument.DocType.CIDB).exists())
+        response = vendor_client(owner, company).post(
+            reverse("vendors:wizard_step", args=[company.pk, 3]),
+            {"no_cidb_registration": "on"},
+        )
+        self.assertEqual(response.status_code, 302)
+        company.refresh_from_db()
+        self.assertTrue(company.no_cidb_registration)
+        self.assertEqual(company.cidb_registration_number, "")
+        self.assertEqual(company.cidb_grade, "")
+        self.assertIsNone(company.cidb_certificate_expiry)
+        self.assertFalse(company.documents.filter(doc_type=CompanyDocument.DocType.CIDB).exists())
+
+    def test_declared_no_cidb_can_pass_registration_rules(self) -> None:
+        owner = make_user("no-cidb-rules")
+        company = make_company(owner, status=Company.RegistrationStatus.DRAFT)
+        company.no_cidb_registration = True
+        company.cidb_registration_number = ""
+        company.cidb_grade = ""
+        company.cidb_certificate_expiry = None
+        company.declaration_accepted = True
+        company.declaration_text_version = "test"
+        company.save()
+        company.documents.filter(doc_type=CompanyDocument.DocType.CIDB).delete()
+        result = evaluate_company_registration(company)
+        self.assertNotIn("incomplete_cidb", result.reason_codes)
+        self.assertNotIn("missing_cidb_document", result.reason_codes)
+        self.assertTrue(result.approved)
 
 
 class CompanyDeletionRetentionTests(TestCase):

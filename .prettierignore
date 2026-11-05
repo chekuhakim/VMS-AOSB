@@ -6,6 +6,7 @@ media/
 db.sqlite3
 *.min.js
 *.min.css
+static/css/app.css
 package-lock.json
 # Django templates — Prettier breaks {% %} tags; do not auto-format
 templates/

@@ -4,7 +4,8 @@
   "description": "ISO 9001-aligned vendor management for a Malaysian Towerco.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:css": "tailwindcss -i ./assets/tailwind.css -o ./static/css/app.css --minify"
   },
   "repository": {
     "type": "git",
@@ -20,6 +21,7 @@
   "homepage": "https://github.com/nurin-aosb/VMS-AOSB#readme",
   "devDependencies": {
     "prettier": "^3.9.6",
-    "prettier-plugin-tailwindcss": "^0.8.1"
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "tailwindcss": "^3.4.17"
   }
 }

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Master Service Agreement — Alpha Orange Sdn Bhd</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm 22mm 18mm 22mm;
+            @top-center {
+                content: "ALPHA ORANGE SDN BHD   ·   MASTER SERVICE AGREEMENT";
+                font-family: "Liberation Sans", sans-serif;
+                font-size: 8pt;
+                letter-spacing: 0.14em;
+                color: #5c6b7a;
+            }
+            @bottom-center {
+                content: counter(page);
+                font-family: "Liberation Sans", sans-serif;
+                font-size: 9pt;
+                color: #5c6b7a;
+            }
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: "Liberation Serif", "Times New Roman", Times, serif;
+            font-size: 10.5pt;
+            line-height: 1.5;
+            color: #1c1c1c;
+            margin: 0;
+            hyphens: manual;
+        }
+        h1 {
+            font-family: "Liberation Sans", sans-serif;
+            font-size: 13pt;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            text-align: center;
+            text-transform: uppercase;
+            color: #1e3a5f;
+            margin: 0 0 3pt;
+        }
+        .kicker {
+            font-family: "Liberation Sans", sans-serif;
+            font-size: 8pt;
+            letter-spacing: 0.2em;
+            text-align: center;
+            text-transform: uppercase;
+            color: #5c6b7a;
+            margin: 0 0 8pt;
+        }
+        hr.rule {
+            border: none;
+            border-top: 0.8pt solid #1e3a5f;
+            margin: 0 0 14pt;
+        }
+        h2 {
+            font-family: "Liberation Sans", sans-serif;
+            font-size: 10.5pt;
+            font-weight: 700;
+            color: #1e3a5f;
+            margin: 13pt 0 4pt;
+            break-after: avoid;
+        }
+        p { margin: 0 0 8pt; text-align: justify; }
+        p.cl {
+            padding-left: 1.7em;
+            text-indent: -1.7em;
+        }
+        .n {
+            font-family: "Liberation Sans", sans-serif;
+            font-size: 9pt;
+            font-weight: 700;
+            color: #1e3a5f;
+        }
+        ol.letters {
+            list-style-type: lower-alpha;
+            margin: 2pt 0 8pt 1.7em;
+            padding: 0;
+        }
+        ol.letters li {
+            margin: 0 0 3pt;
+            text-align: justify;
+            padding-left: 0.3em;
+        }
+        .blank {
+            display: inline-block;
+            border-bottom: 0.6pt solid #1c1c1c;
+            min-width: 48mm;
+            height: 0.85em;
+            vertical-align: baseline;
+        }
+        .blank.long { min-width: 72mm; }
+        table.sigs {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 8mm 0;
+            margin-top: 8pt;
+            break-inside: avoid;
+            font-size: 9.5pt;
+        }
+        table.sigs td {
+            width: 50%;
+            vertical-align: top;
+            padding: 0;
+        }
+        table.sigs p { text-align: left; }
+        .sign-line {
+            border-bottom: 0.7pt solid #1c1c1c;
+            height: 28pt;
+            margin: 10pt 0 4pt;
+        }
+        .who {
+            font-family: "Liberation Sans", sans-serif;
+            font-size: 8pt;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #5c6b7a;
+            margin: 0 0 2pt;
+        }
+    </style>
+</head>
+<body>
+
+    <p class="kicker">Alpha Orange Sdn Bhd</p>
+    <h1>Master Service Agreement</h1>
+    <hr class="rule">
+
+    <p>This Master Service Agreement is made and entered into as of this {{ day }} day of {{ month }}, {{ year }} by and between:</p>
+
+    <p><strong>Alpha Orange Sdn Bhd (600527-V)</strong>, (hereinafter referred to as “Client”), located at 8-1F, Jalan Setia Perdana BE, U13/BE, Bandar Setia Alam, 40170, Shah Alam, Selangor,</p>
+
+    <p>AND</p>
+
+    <p><strong>{% if company_name %}{{ company_name }}{% else %}<span class="blank long"></span>{% endif %}</strong> (Company No: {% if company_no %}{{ company_no }}{% else %}<span class="blank"></span>{% endif %}), (hereinafter referred to as “Contractor”), located at {% if address %}{{ address }}{% else %}<span class="blank long"></span>{% endif %}.</p>
+
+    <p><strong>WHEREAS</strong> Client is a telecommunications infrastructure company (Towerco) and desires to engage Contractor for various services related to the construction, erection, and maintenance of telecommunication towers and associated civil, mechanical, and electrical works; and</p>
+
+    <p><strong>WHEREAS</strong>, Contractor represents that it has the necessary expertise, licenses, and capacity to provide such services to Client under the terms and conditions set forth herein.</p>
+
+    <p><strong>NOW, THEREFORE</strong>, in consideration of the mutual covenants contained herein, the Parties agree as follows:</p>
+
+    <h2>1. Purpose of Agreement</h2>
+    <p>This Agreement establishes the general terms and conditions that will govern all future services provided by Contractor to Client. Specific services, site locations, deliverables, timelines, and pricing will be detailed in separate Purchase Orders (“POs”) or Statements of Work (“SOWs”) issued by Client and accepted by Contractor, each of which shall be subject to the terms of this Agreement.</p>
+
+    <h2>2. Scope of Services</h2>
+    <p>The specific services to be performed by the Contractor will be described in individual POs or SOWs. Services may include, but are not limited to, site clearing, civil works, foundation casting, erection of telecommunication towers, installation of electrical grounding, fencing, and site handover preparations. The Contractor agrees to perform all services in a professional, workmanlike, and timely manner, in accordance with approved structural drawings, engineering specifications, and guidelines set by the Malaysian Communications and Multimedia Commission (MCMC) and local authorities.</p>
+
+    <h2>3. Purchase Orders / Statements of Work</h2>
+    <p class="cl"><span class="n">3.1</span> All services provided under this Agreement shall be initiated by a written PO or SOW, issued by Client and accepted by Contractor.</p>
+    <p class="cl"><span class="n">3.2</span> Each PO/SOW shall reference this Agreement and will define:</p>
+    <ol class="letters" type="a">
+        <li>A detailed description of the site location and services to be performed;</li>
+        <li>Any specific deliverables (e.g., as-built drawings, handover certificates, soil test reports);</li>
+        <li>The project timeline, milestones, and delivery schedule;</li>
+        <li>The agreed-upon pricing and payment terms for that specific PO/SOW; and</li>
+        <li>Any specific performance criteria or acceptance procedures.</li>
+    </ol>
+    <p class="cl"><span class="n">3.3</span> <strong>Hierarchy of Documents.</strong> In the event of any conflict or inconsistency between the terms of this Agreement and a PO/SOW:</p>
+    <ol class="letters" type="a">
+        <li>The terms of the PO/SOW shall prevail regarding project-specific commercial details (e.g., quantities, delivery dates, specifications, and price).</li>
+        <li>The terms of this Agreement (MSA) shall prevail regarding all legal and risk-allocation provisions, unless the PO/SOW explicitly states that it intends to override a specific clause of this MSA by referencing that clause number.</li>
+    </ol>
+
+    <h2>4. Compensation and Payment</h2>
+    <p class="cl"><span class="n">4.1</span> The Client shall pay Contractor for services rendered and milestones achieved as specified in each accepted PO/SOW.</p>
+    <p class="cl"><span class="n">4.2</span> Unless otherwise specified in a PO/SOW, invoices shall be submitted upon completion of agreed milestones. Payment shall be due within thirty (30) days of receipt of a valid, undisputed invoice and all required supporting documentation (e.g., joint site inspection reports).</p>
+    <p class="cl"><span class="n">4.3</span> In the event of a disputed invoice, Client shall notify the Contractor in writing within ten (10) days of receipt, detailing the reason for the dispute. Client may withhold payment of the disputed portion while paying the undisputed portion. Both Parties shall work in good faith to resolve the dispute promptly.</p>
+
+    <h2>5. Warranties and Defects Liability</h2>
+    <p class="cl"><span class="n">5.1</span> Contractor warrants that all construction and services performed will be executed in a professional manner, strictly adhering to the approved engineering designs, local municipal council requirements, and telecommunications industry standards.</p>
+    <p class="cl"><span class="n">5.2</span> Contractor warrants that all materials, structures, and deliverables provided will conform to the specifications and will be free from defects in materials and workmanship for a Defects Liability Period (DLP) of twelve (12) months from the date of issuance of the Certificate of Practical Completion (CPC) or site acceptance by Client, unless otherwise extended in a specific PO/SOW.</p>
+    <p class="cl"><span class="n">5.3</span> In the event of a breach of the foregoing warranties or the discovery of structural or workmanship defects during the DLP, Contractor shall, at its own expense, promptly, and in any event within seven (7) days of notification from Client (or within 24 hours in cases of structural emergency or safety hazards), rectify, repair, or replace the defective works. If Contractor fails to rectify the defect within this period, Client may engage a third party to rectify the defect at the Contractor’s sole cost, which may be deducted from any retention sum or pending payments.</p>
+
+    <h2>6. Health, Safety, and Environment (HSE)</h2>
+    <p class="cl"><span class="n">6.1</span> Contractor shall be solely responsible for initiating, maintaining, and supervising all safety precautions and programs in connection with the site works.</p>
+    <p class="cl"><span class="n">6.2</span> Contractor must comply strictly with the Occupational Safety and Health Act 1994 (OSHA) and all applicable environmental regulations. Client reserves the right to issue a stop-work order without penalty if severe safety violations are observed on site, until such hazards are rectified by the Contractor.</p>
+
+    <h2>7. Insurance</h2>
+    <p>Contractor shall, at its sole cost and expense, procure and maintain in force throughout the Term of this Agreement insurance coverage adequate to cover its obligations. Such insurance shall include:</p>
+    <ol class="letters" type="a">
+        <li><strong>Public Liability Insurance:</strong> With a limit of not less than RM 1,000,000.00 per occurrence;</li>
+        <li><strong>Contractor All Risk (CAR) Insurance:</strong> Covering the full value of the project/contract sum, noting Alpha Orange Sdn Bhd as Principal; and</li>
+        <li><strong>Worker’s Compensation / SOCSO:</strong> In compliance with statutory requirements in Malaysia for all personnel on site.</li>
+    </ol>
+
+    <h2>8. Licenses and Qualifications</h2>
+    <p class="cl"><span class="n">8.1</span> Contractor represents and warrants that it holds and will maintain all necessary licenses, including a valid Construction Industry Development Board (CIDB) registration appropriate for the grade and category of the works, and any necessary permits required by local councils or regulatory authorities in Malaysia.</p>
+    <p class="cl"><span class="n">8.2</span> All personnel working at heights or performing electrical installations must possess valid certifications (e.g., NIOSH, NESP, Suruhanjaya Tenaga competencies) necessary for their respective duties.</p>
+
+    <h2>9. Intellectual Property and Ownership of Assets</h2>
+    <p class="cl"><span class="n">9.1</span> All physical structures, materials, and equipment delivered to the site or constructed by the Contractor shall become the sole property of the Client upon the earlier of delivery to the site or payment by the Client.</p>
+    <p class="cl"><span class="n">9.2</span> All deliverables, including but not limited to site surveys, soil test results, and as-built drawings, prepared by the Contractor under this Agreement shall be the exclusive property of the Client (Works for Hire). Client grants Contractor a limited, non-exclusive license to use these materials solely for the purpose of executing the works under this Agreement.</p>
+
+    <h2>10. Confidentiality</h2>
+    <p>Both Parties agree to maintain the confidentiality of any proprietary or confidential information disclosed by one Party to the other during the course of this Agreement. This includes technical drawings, network rollout plans, site location coordinates, client lists, and pricing. This obligation shall survive the termination of this Agreement for a period of five (5) years.</p>
+
+    <h2>11. Indemnification</h2>
+    <p>Contractor shall indemnify, defend, and hold harmless Client, its affiliates, and their respective directors, officers, and employees from and against any and all claims, damages, liabilities, costs, and expenses (including reasonable attorney’s fees) arising out of or in connection with Contractor’s performance of services, including but not limited to claims of negligence, worksite accidents, property damage, or failure to comply with statutory regulations.</p>
+
+    <h2>12. Limitation of Liability</h2>
+    <p class="cl"><span class="n">12.1</span> <strong>Maximum Liability.</strong> Except for Contractor’s indemnification obligations (Section 11), liability for breach of confidentiality (Section 10), or liability arising from gross negligence, willful misconduct, or personal injury/death, the Contractor’s total aggregate liability to the Client shall be limited to the greater of (i) RM 1,000,000.00 or (ii) the total Contract Price of the specific PO/SOW under which the claim arises.</p>
+    <p class="cl"><span class="n">12.2</span> <strong>Exclusion of Certain Damages.</strong> Subject to Section 12.1, in no event shall either Party be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to lost profits or loss of network revenue, even if advised of the possibility of such damages.</p>
+
+    <h2>13. Term and Termination</h2>
+    <p class="cl"><span class="n">13.1</span> This Agreement shall commence on the Effective Date and shall continue until terminated by either Party upon thirty (30) days’ written notice.</p>
+    <p class="cl"><span class="n">13.2</span> Either Party may terminate this Agreement immediately upon written notice if the other Party materially breaches any provision and fails to cure such breach within ten (10) days of receiving written notice.</p>
+    <p class="cl"><span class="n">13.3</span> Upon termination of this Agreement for any reason, the Client shall have the sole discretion to either (i) allow any POs/SOWs currently in progress to continue to completion under the terms of this MSA, or (ii) immediately terminate any or all active POs/SOWs, paying only for works verified and completed up to the date of termination.</p>
+
+    <h2>14. Force Majeure</h2>
+    <p>Neither Party shall be liable for any failure or delay in performing its obligations under this Agreement if such failure or delay is caused by circumstances beyond its reasonable control, including but not limited to acts of God, natural disasters, pandemic lockdowns, war, or strikes (excluding strikes by the Contractor’s own workforce). The affected Party must promptly notify the other Party in writing. If the force majeure event continues for more than thirty (30) days, the Client may terminate the affected PO/SOW without penalty.</p>
+
+    <h2>15. Independent Contractor</h2>
+    <p>Contractor is an independent contractor. Nothing in this Agreement shall be construed to create a partnership, joint venture, agency, or employer-employee relationship between the Parties. Contractor shall be solely responsible for all employment liabilities, including wages, EPF, SOCSO, and income tax deductions for its personnel.</p>
+
+    <h2>16. Governing Law and Dispute Resolution</h2>
+    <p class="cl"><span class="n">16.1</span> This Agreement shall be governed by and construed in accordance with the laws of Malaysia.</p>
+    <p class="cl"><span class="n">16.2</span> Any dispute, controversy, or claim arising out of or relating to this Agreement, or the breach, termination, or invalidity thereof, shall first be subject to good-faith negotiations between the senior management of both Parties. If the dispute cannot be resolved within thirty (30) days, it shall be referred to and finally resolved by the exclusive jurisdiction of the Courts of Malaya.</p>
+
+    <h2>17. Illegality and Anti-Corruption</h2>
+    <p class="cl"><span class="n">17.1</span> The Contractor shall at all times comply with all applicable laws in Malaysia, including the Malaysian Anti-Corruption Commission Act 2009 (MACC Act).</p>
+    <p class="cl"><span class="n">17.2</span> The Contractor shall not engage in any activity that is unlawful, unethical, or may bring the Client into disrepute, including bribery, corruption, fraud, or offering gratification to any officer of the Client, public official, or site landlord to induce an advantage.</p>
+    <p class="cl"><span class="n">17.3</span> In the event the Contractor breaches the MACC Act, the Client reserves the right to immediately terminate this Agreement.</p>
+
+    <h2>18. Notices</h2>
+    <p>All notices, requests, demands, or other communications required or permitted under this Agreement shall be in writing and deemed delivered when (i) personally delivered; (ii) sent by registered post or courier with tracking; or (iii) sent via email with confirmed receipt, addressed to the respective physical addresses stated in the preamble or to designated legal/administrative email addresses provided by each Party.</p>
+
+    <h2>19. Non-Solicitation</h2>
+    <p>During the term of this Agreement and for twelve (12) months thereafter, neither Party shall directly or indirectly solicit, recruit, or hire any employee of the other Party who has been involved in the performance or supervision of the services under this Agreement, without prior written consent.</p>
+
+    <h2>20. Amendments</h2>
+    <p>No amendment, modification, or waiver of any provision of this Agreement shall be effective unless in writing and signed by duly authorized representatives of both Parties.</p>
+
+    <h2>21. Entire Agreement</h2>
+    <p>This Agreement, together with any accepted POs/SOWs, constitutes the entire agreement between the Parties with respect to the subject matter hereof and supersedes all prior agreements, understandings, and negotiations.</p>
+
+    <p style="margin-top: 14pt;"><strong>IN WITNESS WHEREOF</strong>, the Parties have executed this Agreement as of the Effective Date.</p>
+
+    <table class="sigs">
+        <tr>
+            <td>
+                <p class="who">Client</p>
+                <p><strong>Alpha Orange Sdn Bhd</strong> (600527-V)</p>
+                <div class="sign-line"></div>
+                <p>Signed by (Name):<br>Che Ku Mohamad Hakim bin Che Ku Abdullah</p>
+                <p>Designation: Director</p>
+                <p style="margin-top: 12pt;">In the presence of:</p>
+                <p>Name: <span class="blank"></span></p>
+            </td>
+            <td>
+                <p class="who">Contractor</p>
+                <p><strong>{% if company_name %}{{ company_name }}{% else %}<span class="blank"></span>{% endif %}</strong></p>
+                <div class="sign-line"></div>
+                <p>Signed by (Name):<br><span class="blank long"></span></p>
+                <p>Designation: <span class="blank"></span></p>
+                <p style="margin-top: 12pt;">In the presence of:</p>
+                <p>Name: <span class="blank"></span></p>
+            </td>
+        </tr>
+    </table>
+
+</body>
+</html>

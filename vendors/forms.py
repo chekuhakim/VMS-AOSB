@@ -208,16 +208,19 @@ class Step3CIDBForm(forms.ModelForm):
     class Meta:
         model = Company
         fields = (
+            "no_cidb_registration",
             "cidb_registration_number",
             "cidb_grade",
             "cidb_certificate_expiry",
         )
         labels = {
+            "no_cidb_registration": "This company does not hold a CIDB registration",
             "cidb_registration_number": "CIDB Registration Number",
             "cidb_grade": "CIDB Grade",
             "cidb_certificate_expiry": "CIDB Certificate Expiry",
         }
         widgets = {
+            "no_cidb_registration": forms.CheckboxInput(attrs=_CHECK),
             "cidb_registration_number": forms.TextInput(attrs=_INPUT),
             "cidb_grade": forms.Select(attrs=_INPUT, choices=CIDB_GRADE_CHOICES),
             "cidb_certificate_expiry": forms.DateInput(attrs={**_INPUT, "type": "date"}),
@@ -230,28 +233,61 @@ class Step3CIDBForm(forms.ModelForm):
             attrs=_INPUT, choices=CIDB_GRADE_CHOICES
         )
         self.fields["cidb_grade"].choices = CIDB_GRADE_CHOICES
-        for name in ("cidb_registration_number", "cidb_grade", "cidb_certificate_expiry"):
-            self.fields[name].required = True
-        self.fields["cidb_pdf"].required = self.require_pdf
+        self.fields["no_cidb_registration"].required = False
+        # Detail fields are required only when the company holds a registration (clean + UI).
+        for name in ("cidb_registration_number", "cidb_grade", "cidb_certificate_expiry", "cidb_pdf"):
+            self.fields[name].required = False
         _require_future_or_today(self.fields["cidb_certificate_expiry"])
         _mark_required_labels(self)
+        for name in ("cidb_registration_number", "cidb_grade", "cidb_certificate_expiry"):
+            self.fields[name].label = required_label(self.fields[name].label or name)
+        if self.require_pdf:
+            self.fields["cidb_pdf"].label = required_label("CIDB certificate (PDF)")
+
+    def _opted_out(self) -> bool:
+        return bool(self.data.get("no_cidb_registration"))
 
     def clean_cidb_pdf(self):
+        if self._opted_out():
+            return None
         pdf = self.cleaned_data.get("cidb_pdf")
         if pdf:
             validate_pdf_upload(pdf)
         return pdf
 
-    def clean(self) -> dict:
-        cleaned = super().clean()
-        _check_unique_identifier(self, cleaned, "cidb_registration_number")
-        return cleaned
-
     def clean_cidb_certificate_expiry(self):
-        expiry = self.cleaned_data["cidb_certificate_expiry"]
+        if self._opted_out():
+            return None
+        expiry = self.cleaned_data.get("cidb_certificate_expiry")
         if expiry and expiry < timezone.localdate():
             raise ValidationError("CIDB certificate is already expired.")
         return expiry
+
+    def clean(self) -> dict:
+        cleaned = super().clean()
+        if cleaned.get("no_cidb_registration"):
+            cleaned["cidb_registration_number"] = ""
+            cleaned["cidb_grade"] = ""
+            cleaned["cidb_certificate_expiry"] = None
+            cleaned["cidb_pdf"] = None
+            return cleaned
+        for field in ("cidb_registration_number", "cidb_grade", "cidb_certificate_expiry"):
+            if not cleaned.get(field):
+                self.add_error(field, "Required unless this company does not hold a CIDB registration.")
+        if self.require_pdf and not cleaned.get("cidb_pdf"):
+            self.add_error("cidb_pdf", "CIDB certificate PDF is required.")
+        _check_unique_identifier(self, cleaned, "cidb_registration_number")
+        return cleaned
+
+    def save(self, commit: bool = True) -> Company:
+        company = super().save(commit=False)
+        if self.cleaned_data.get("no_cidb_registration"):
+            company.cidb_registration_number = ""
+            company.cidb_grade = ""
+            company.cidb_certificate_expiry = None
+        if commit:
+            company.save()
+        return company
 
 
 class Step4STForm(forms.ModelForm):

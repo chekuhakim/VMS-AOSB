@@ -8,23 +8,15 @@
 
   <div class="space-y-4">
     {% for row in submissions %}
-      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <a href="{% url 'staff:envelope1_evaluate' row.pk 1 %}?review=1" class="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-brand/40 hover:shadow-md">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p class="font-semibold text-slate-900">{{ row.company.name }}</p>
-            <p class="text-xs text-slate-500">Updated {{ row.updated_at|date:"d M Y H:i" }}</p>
+            <p class="text-xs text-slate-500">Evaluation complete · updated {{ row.updated_at|date:"d M Y H:i" }}</p>
           </div>
-          <a href="{% url 'staff:envelope1_detail' row.pk %}" class="text-sm font-medium text-brand hover:text-brand-700">Review checklist</a>
+          <span class="inline-flex items-center justify-center rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white">Review</span>
         </div>
-        {% if can_approve %}
-          <form method="post" action="{% url 'staff:approval_decide' row.pk %}" class="mt-4 flex flex-col gap-2 sm:flex-row">
-            {% csrf_token %}
-            <input type="text" name="note" placeholder="Optional note" class="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm" />
-            <button type="submit" name="decision" value="approve" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Approve</button>
-            <button type="submit" name="decision" value="reject" class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700">Reject</button>
-          </form>
-        {% endif %}
-      </div>
+      </a>
     {% empty %}
       <div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
         No packs awaiting director approval.

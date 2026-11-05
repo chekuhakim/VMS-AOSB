@@ -93,13 +93,17 @@ def count_expiring_certificates(today: date) -> int:
     total = 0
     companies = Company.objects.exclude(registration_status=Company.RegistrationStatus.DRAFT)
     for company in companies.only(
-        "ssm_document_expiry", "cidb_certificate_expiry", "st_certificate_expiry"
+        "ssm_document_expiry",
+        "cidb_certificate_expiry",
+        "st_certificate_expiry",
+        "no_cidb_registration",
     ):
-        for expiry in (
+        expiries = [
             company.ssm_document_expiry,
-            company.cidb_certificate_expiry,
+            None if company.no_cidb_registration else company.cidb_certificate_expiry,
             company.st_certificate_expiry,
-        ):
+        ]
+        for expiry in expiries:
             if expiry and expiry <= limit:
                 total += 1
 

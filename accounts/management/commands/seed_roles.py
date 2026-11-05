@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from urllib.parse import urlparse
+
+from django.conf import settings
 from django.contrib.sites.models import Site
 from django.core.management.base import BaseCommand
 
@@ -20,7 +23,7 @@ class Command(BaseCommand):
         )
 
         site = Site.objects.get_or_create(pk=1)[0]
-        site.domain = "localhost:8000"
+        site.domain = urlparse(settings.SITE_URL).netloc or "localhost:8000"
         site.name = "Alpha Orange VMS"
         site.save(update_fields=["domain", "name"])
         self.stdout.write(self.style.SUCCESS(f"Site set to {site.domain}"))

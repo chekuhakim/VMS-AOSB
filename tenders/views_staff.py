@@ -8,6 +8,7 @@ from django.db import transaction
 from django.db.models import Count, Prefetch, Q
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET, require_POST
 
@@ -25,6 +26,7 @@ from tenders.documents import store_rfq_document
 from tenders.forms import ProjectForm, RFQForm
 from tenders.models import RFQ, Project, Quotation, TenderAward
 from tenders.services import (
+    _notify_eligible_vendors,
     cancel_project,
     decide_award,
     next_rfq_code,
@@ -153,7 +155,7 @@ def tender_detail(request: HttpRequest, pk: int) -> HttpResponse:
             "page_title": project.reference or "Draft project",
             "project": project,
             "rows": rows,
-            "rfq_form": RFQForm() if project.is_editable else None,
+            "rfq_form": RFQForm() if project.can_add_rfq else None,
             "can_evaluate": can_evaluate(request.user),
             "can_approve": can_approve(request.user),
         },
@@ -164,10 +166,14 @@ def tender_detail(request: HttpRequest, pk: int) -> HttpResponse:
 @procurement_required
 def rfq_save(request: HttpRequest, pk: int, rfq_pk: int | None = None) -> HttpResponse:
     project = get_object_or_404(Project, pk=pk)
-    if not project.is_editable:
-        messages.error(request, "RFQs can only be changed while the project is a draft.")
-        return redirect("tenders:tender_detail", pk=pk)
     rfq = get_object_or_404(RFQ, pk=rfq_pk, project=project) if rfq_pk else None
+    adding = rfq is None
+    if adding and not project.can_add_rfq:
+        messages.error(request, "RFQs can only be added while the project is open for quotations.")
+        return redirect("tenders:tender_detail", pk=pk)
+    if not adding and not project.is_editable:
+        messages.error(request, "Published RFQs cannot be edited.")
+        return redirect("tenders:tender_detail", pk=pk)
     form = RFQForm(request.POST or None, request.FILES or None, instance=rfq)
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
@@ -187,6 +193,19 @@ def rfq_save(request: HttpRequest, pk: int, rfq_pk: int | None = None) -> HttpRe
                 object_type="RFQ",
                 object_id=obj.pk,
             )
+            # Draft RFQs are covered by the publish email. A package added after
+            # publish is a new tender, so eligible vendors are emailed then.
+            if adding and project.status == Project.Status.OPEN:
+                _notify_eligible_vendors(
+                    project=project,
+                    dedupe_key=f"tender-rfq-{obj.pk}",
+                    title=f"New tender available — {obj.code}",
+                    body=(
+                        f"{obj.title} was added to {project.reference or project.title}. "
+                        f"Quotations close "
+                        f"{timezone.localtime(project.closing_at):%d %b %Y %H:%M}."
+                    ),
+                )
         messages.success(request, f"{obj.code} saved.")
         return redirect("tenders:tender_detail", pk=pk)
     if request.method == "POST":

@@ -1,6 +1,31 @@
 {% extends "base.html" %}
 
 {% block content %}
+  {% if procurement_done %}
+    <div class="mx-auto flex min-h-[70vh] w-full max-w-md items-center px-2 py-8">
+      <div class="w-full rounded-3xl border border-white/70 bg-white px-8 py-10 text-center shadow-xl shadow-slate-200/80" role="status">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Envelope 1 · {{ company.name }}</p>
+        <div class="mx-auto mt-8 flex h-28 w-28 items-center justify-center rounded-full bg-emerald-50">
+          <div class="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-200">
+            <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+          </div>
+        </div>
+        <h1 class="mt-6 text-2xl font-bold tracking-tight text-slate-900">Evaluation complete</h1>
+        <p class="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-slate-600">
+          This Envelope 1 has been sent to the Director. You can still edit the evaluation until they decide.
+        </p>
+        <div class="mt-8 space-y-3">
+          <form method="post" action="{% url 'staff:envelope1_reopen_eval' submission.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="inline-flex w-full items-center justify-center rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-700">Edit</button>
+          </form>
+          <a href="{% url 'staff:envelope1_list' %}" class="inline-flex w-full items-center justify-center rounded-xl px-6 py-2.5 text-sm font-semibold text-slate-500 hover:text-slate-800">Back to list</a>
+        </div>
+      </div>
+    </div>
+  {% else %}
   {# Header #}
   <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
     <div class="min-w-0">
@@ -40,7 +65,9 @@
     </div>
   {% elif not editable %}
     <div class="mb-4 rounded-2xl border border-slate-200 bg-white/80 px-5 py-3 text-sm text-slate-600">
-      {% if submission.status == "pending_director_approval" %}
+      {% if director_review %}
+        Read-only evaluation. Approve or reject on the last step.
+      {% elif submission.status == "pending_director_approval" %}
         Procurement evaluation is complete — awaiting Director approval. Checklist is read-only.
       {% elif submission.status == "approved" or submission.status == "rejected" %}
         Final decision recorded ({{ submission.get_status_display }}). Checklist is read-only.
@@ -94,7 +121,7 @@
           {% if editable %}
             <button type="submit" name="action" value="back" class="rounded-xl bg-[#A8907F] px-7 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#967e6d]">Back</button>
           {% else %}
-            <a href="{% url 'staff:envelope1_evaluate' submission.pk step|add:'-1' %}" class="inline-flex rounded-xl bg-[#A8907F] px-7 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#967e6d]">Back</a>
+            <a href="{% url 'staff:envelope1_evaluate' submission.pk step|add:'-1' %}{% if review_query %}?{{ review_query }}{% endif %}" class="inline-flex rounded-xl bg-[#A8907F] px-7 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#967e6d]">Back</a>
           {% endif %}
         {% else %}
           <a href="{% url 'staff:envelope1_list' %}" class="inline-flex rounded-xl bg-[#A8907F] px-7 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#967e6d]">Back to list</a>
@@ -108,7 +135,7 @@
           {% if editable %}
             <button type="submit" name="action" value="next" class="rounded-xl bg-brand px-8 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700">Next</button>
           {% else %}
-            <a href="{% url 'staff:envelope1_evaluate' submission.pk step|add:'1' %}" class="inline-flex justify-center rounded-xl bg-brand px-8 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700">Next</a>
+            <a href="{% url 'staff:envelope1_evaluate' submission.pk step|add:'1' %}{% if review_query %}?{{ review_query }}{% endif %}" class="inline-flex justify-center rounded-xl bg-brand px-8 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700">Next</a>
           {% endif %}
         {% elif editable %}
           <button type="submit" name="action" value="send_director" class="rounded-xl bg-brand px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700">Send to Director</button>
@@ -133,17 +160,17 @@
     </details>
   {% endif %}
 
-  {% if step == last_step and can_approve and submission.status == "pending_director_approval" %}
-    <section class="mt-5 rounded-2xl border border-brand/20 bg-white px-5 py-5 shadow-sm">
-      <h2 class="text-sm font-bold text-slate-900">Director decision</h2>
-      <p class="mt-0.5 text-xs text-slate-500">Procurement passed all {{ progress.total }} items. Approve or reject this Envelope 1.</p>
-      <form method="post" action="{% url 'staff:approval_decide' submission.pk %}" class="mt-3 flex flex-col gap-3 sm:flex-row">
+  {% if step == last_step and director_review %}
+    <section class="mt-5 rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
+      <p class="text-sm text-slate-600">You have reached the end of this evaluation. Approve or reject this Envelope 1.</p>
+      <form method="post" action="{% url 'staff:approval_decide' submission.pk %}" class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
         {% csrf_token %}
-        <input type="text" name="note" placeholder="Optional note" class="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand" />
-        <button type="submit" name="decision" value="approve" class="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">Approve</button>
-        <button type="submit" name="decision" value="reject" class="rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-rose-700">Reject</button>
+        <input type="text" name="note" placeholder="Optional note for the vendor" class="flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand" />
+        <button type="submit" name="decision" value="approve" class="rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">Approve</button>
+        <button type="submit" name="decision" value="reject" class="rounded-xl bg-rose-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-rose-700">Reject</button>
       </form>
     </section>
+  {% endif %}
   {% endif %}
 {% endblock %}
 

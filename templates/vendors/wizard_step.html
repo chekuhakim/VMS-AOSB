@@ -103,6 +103,17 @@
 
       {% elif step == 3 %}
         <div class="space-y-5">
+          <label class="flex items-start gap-3 rounded-xl border border-slate-200 bg-cream/60 px-4 py-3 text-sm text-slate-700">
+            {{ form.no_cidb_registration }}
+            <span>
+              {{ form.no_cidb_registration.label }}
+              <span class="mt-0.5 block text-xs text-slate-500">Certificate number, grade, expiry, and PDF are not required. Projects that set a minimum CIDB grade will not include this company.</span>
+            </span>
+          </label>
+          {% if form.no_cidb_registration.errors %}
+            <p class="text-xs text-rose-600">{{ form.no_cidb_registration.errors.0 }}</p>
+          {% endif %}
+          <div id="cidb-details-wrap" class="space-y-5 {% if form.no_cidb_registration.value %}hidden{% endif %}">
           <div class="grid gap-5 sm:grid-cols-2">
             <div>
               <label for="{{ form.cidb_registration_number.id_for_label }}" class="block text-sm font-medium text-slate-700">
@@ -143,6 +154,7 @@
             {% if form.cidb_pdf.errors %}
               <p class="mt-1 text-xs text-rose-600">{{ form.cidb_pdf.errors.0 }}</p>
             {% endif %}
+          </div>
           </div>
         </div>
 
@@ -250,11 +262,15 @@
               <div class="space-y-3 px-5 py-4">
                 <div>
                   <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">CIDB</dt>
-                  <dd class="mt-0.5 text-sm text-slate-800">
-                    {{ company.cidb_registration_number|default:"—" }}
-                    · Grade {{ company.cidb_grade|default:"—" }}
-                  </dd>
-                  <dd class="text-xs text-slate-500">Expiry {{ company.cidb_certificate_expiry|date:"d M Y"|default:"—" }}</dd>
+                  {% if company.no_cidb_registration %}
+                    <dd class="mt-0.5 text-sm text-slate-800">No CIDB registration</dd>
+                  {% else %}
+                    <dd class="mt-0.5 text-sm text-slate-800">
+                      {{ company.cidb_registration_number|default:"—" }}
+                      · Grade {{ company.cidb_grade|default:"—" }}
+                    </dd>
+                    <dd class="text-xs text-slate-500">Expiry {{ company.cidb_certificate_expiry|date:"d M Y"|default:"—" }}</dd>
+                  {% endif %}
                 </div>
                 <div>
                   <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Electrical / ST</dt>
@@ -349,7 +365,7 @@
 
       function fieldVisible(el) {
         if (!el) return false
-        var wrap = el.closest('#ssm-expiry-wrap, #st-details-wrap')
+        var wrap = el.closest('#ssm-expiry-wrap, #st-details-wrap, #cidb-details-wrap')
         if (wrap && wrap.classList.contains('hidden')) return false
         return true
       }
@@ -389,6 +405,27 @@
         }
         enterprise.addEventListener('change', syncExpiry)
         syncExpiry()
+      }
+
+      var noCidb = document.getElementById('id_no_cidb_registration')
+      var cidbWrap = document.getElementById('cidb-details-wrap')
+      if (noCidb && cidbWrap) {
+        var cidbPdfOptional = {{ has_pdf.cidb|yesno:"true,false" }}
+        var cidbFieldIds = ['id_cidb_registration_number', 'id_cidb_grade', 'id_cidb_certificate_expiry', 'id_cidb_pdf']
+        function syncCidb() {
+          var hide = noCidb.checked
+          cidbWrap.classList.toggle('hidden', hide)
+          cidbFieldIds.forEach(function (id) {
+            var el = document.getElementById(id)
+            if (id === 'id_cidb_pdf' && cidbPdfOptional) {
+              setRequired(el, false)
+            } else {
+              setRequired(el, !hide)
+            }
+          })
+        }
+        noCidb.addEventListener('change', syncCidb)
+        syncCidb()
       }
 
       var stWrap = document.getElementById('st-details-wrap')

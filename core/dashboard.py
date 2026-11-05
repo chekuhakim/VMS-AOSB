@@ -300,6 +300,9 @@ def build_expiry_warnings(company: Company | None) -> list[ExpiryItem]:
         # Skip SSM expiry when not an enterprise and no document expiry on file
         if doc_type == CompanyDocument.DocType.SSM and not company.is_enterprise and not expiry:
             continue
+        # A declared absence of CIDB is not a missing certificate
+        if doc_type == CompanyDocument.DocType.CIDB and company.no_cidb_registration:
+            continue
         # Skip ST when electrical not in scope
         if doc_type == CompanyDocument.DocType.ST and not company.includes_electrical_work:
             continue

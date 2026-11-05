@@ -36,6 +36,7 @@ from staff.services import (
     evaluation_progress,
     lock_for_evaluation,
     reject_at_evaluation,
+    reopen_evaluation,
     review_withdrawal,
     send_to_director,
     set_item_result,
@@ -213,6 +214,18 @@ def envelope1_evaluate(request: HttpRequest, pk: int, step: int) -> HttpResponse
         return redirect("staff:envelope1_evaluate", pk=pk, step=1)
 
     user_can_evaluate = can_evaluate(request.user)
+    user_can_approve = can_approve(request.user)
+    # Approvals opens the same wizard read-only; Procurement's own visit stays the done card
+    director_review = (
+        submission.status == Envelope1Submission.Status.PENDING_DIRECTOR
+        and user_can_approve
+        and (request.GET.get("review") == "1" or not user_can_evaluate)
+    )
+    procurement_done = (
+        submission.status == Envelope1Submission.Status.PENDING_DIRECTOR
+        and user_can_evaluate
+        and not director_review
+    )
     # ISO gate: scoring is only open while Procurement holds the lock
     editable = (
         user_can_evaluate
@@ -277,7 +290,10 @@ def envelope1_evaluate(request: HttpRequest, pk: int, step: int) -> HttpResponse
             "progress": evaluation_progress(submission),
             "editable": editable,
             "can_evaluate": user_can_evaluate,
-            "can_approve": can_approve(request.user),
+            "can_approve": user_can_approve,
+            "procurement_done": procurement_done,
+            "director_review": director_review,
+            "review_query": "review=1" if director_review else "",
             "can_lock": user_can_evaluate
             and submission.status
             in {
@@ -312,6 +328,19 @@ def envelope1_send_director(request: HttpRequest, pk: int) -> HttpResponse:
     try:
         send_to_director(submission=submission, actor=request.user, request=request)
         messages.success(request, "Sent to Director for final approval.")
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    return redirect("staff:envelope1_evaluate", pk=pk, step=_EVAL_LAST_STEP)
+
+
+@login_required
+@procurement_required
+@require_POST
+def envelope1_reopen_eval(request: HttpRequest, pk: int) -> HttpResponse:
+    submission = get_object_or_404(Envelope1Submission, pk=pk)
+    try:
+        reopen_evaluation(submission=submission, actor=request.user, request=request)
+        messages.info(request, "Evaluation is open again. Send it to the Director when you are done.")
     except ValueError as exc:
         messages.error(request, str(exc))
     return redirect("staff:envelope1_evaluate", pk=pk, step=_EVAL_LAST_STEP)

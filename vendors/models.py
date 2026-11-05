@@ -84,6 +84,12 @@ class Company(models.Model):
     ssm_document_expiry = models.DateField(null=True, blank=True)
 
     # --- Step 3: CIDB ---
+    # Opt-out is explicit: a company with no CIDB registration can still be approved,
+    # but tender eligibility treats a blank grade as below every minimum grade.
+    no_cidb_registration = models.BooleanField(
+        default=False,
+        help_text="Vendor declared that the company does not hold a CIDB registration.",
+    )
     cidb_registration_number = models.CharField(max_length=50, blank=True)
     cidb_grade = models.CharField(max_length=20, blank=True)
     cidb_certificate_expiry = models.DateField(null=True, blank=True)

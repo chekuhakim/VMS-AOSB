@@ -1,111 +1,81 @@
-"""Generate a simple draft MSA PDF from saved party details."""
+"""Generate MSA and related declaration PDFs from HTML templates and saved party details."""
 
 from __future__ import annotations
 
-from io import BytesIO
+from pathlib import Path
+
+from django.template import Context, Template
+from django.utils import timezone
+from weasyprint import HTML
 
 from envelope1.models import Envelope1Submission
 
+MSA_DIR = Path(__file__).resolve().parent.parent / "MSA"
+MSA_HTML = MSA_DIR / "msa.html"
+NO_ADVANCE_HTML = MSA_DIR / "no-advance.html"
+
+
+def _safe_company_label(submission: Envelope1Submission) -> str:
+    raw = (submission.legal_name or "").strip()
+    cleaned = "".join(" " if ch in '\\/:*?"<>|\r\n' else ch for ch in raw)
+    cleaned = " ".join(cleaned.split())
+    return cleaned or "Company"
+
+
+def msa_download_filename(submission: Envelope1Submission) -> str:
+    """Save-as name for the agreement: '{company name} - MSA.pdf'."""
+    return f"{_safe_company_label(submission)} - MSA.pdf"
+
+
+def no_advance_download_filename(submission: Envelope1Submission) -> str:
+    """Save-as name: '{company name} - No Advance Payment Declaration.pdf'."""
+    return f"{_safe_company_label(submission)} - No Advance Payment Declaration.pdf"
+
+
+def _party_context(submission: Envelope1Submission) -> dict[str, str]:
+    today = timezone.localdate()
+    address = " ".join((submission.principal_address or "").split())
+    return {
+        "day": f"{today.day:02d}",
+        "month": today.strftime("%B"),
+        "year": str(today.year),
+        "company_name": submission.legal_name or "",
+        "company_no": submission.ssm_registration_number or "",
+        "address": address,
+        "signatory_name": submission.msa_signatory_name or "",
+        "signatory_designation": submission.msa_signatory_designation or "",
+    }
+
 
 def build_draft_msa_pdf(submission: Envelope1Submission) -> bytes:
-    """Return a minimal PDF embedding MSA party fields (no external PDF lib)."""
-    lines = [
-        "ALPHA ORANGE SDN BHD — DRAFT MASTER SERVICE AGREEMENT",
-        "",
-        f"Company (cycle {submission.cycle_number})",
-        f"Legal name: {submission.legal_name or '—'}",
-        f"SSM registration: {submission.ssm_registration_number or '—'}",
-        f"Principal address: {(submission.principal_address or '—').replace(chr(10), ' ')}",
-        f"Contact name: {submission.contact_name or '—'}",
-        f"Contact email: {submission.contact_email or '—'}",
-        f"MSA signatory: {submission.msa_signatory_name or '—'}",
-        f"Signatory designation: {submission.msa_signatory_designation or '—'}",
-        "",
-        "This draft is generated from your saved MSA party details.",
-        "Sign and upload the completed MSA in Envelope 1 Step 2.",
-        "This is not a legally binding executed agreement until signed.",
-    ]
-    return _render_text_pdf(lines)
+    """Return the Master Service Agreement as a PDF, filled with this submission."""
+    html = render_draft_msa_html(submission)
+    return HTML(string=html, base_url=str(MSA_DIR)).write_pdf()
+
+
+def render_draft_msa_html(submission: Envelope1Submission) -> str:
+    """Fill the agreement blanks from the vendor's saved MSA party details."""
+    template = Template(MSA_HTML.read_text(encoding="utf-8"))
+    ctx = _party_context(submission)
+    return template.render(Context({k: v for k, v in ctx.items() if k in ("day", "month", "year", "company_name", "company_no", "address")}))
 
 
 def build_no_advance_pdf(submission: Envelope1Submission) -> bytes:
     """Pre-filled 1.4 No Advance Payment Declaration for the vendor to sign and upload."""
-    company = submission.legal_name or "—"
-    lines = [
-        "ALPHA ORANGE SDN BHD — NO ADVANCE PAYMENT DECLARATION",
-        "",
-        f"Company: {company}",
-        f"SSM registration: {submission.ssm_registration_number or '—'}",
-        f"Address: {(submission.principal_address or '—').replace(chr(10), ' ')}",
-        "",
-        f"I, {submission.msa_signatory_name or '____________________'}, "
-        f"{submission.msa_signatory_designation or '____________________'},",
-        f"for and on behalf of {company}, declare that:",
-        "",
-        "1. The company does not require any advance payment from Alpha Orange Sdn Bhd",
-        "   for works or supplies carried out under the Master Service Agreement.",
-        "2. The company has sufficient working capital and/or credit facilities to",
-        "   mobilise and complete each work order before progress claims are paid.",
-        "3. Payment will only be claimed according to the agreed payment terms.",
-        "",
-        "",
-        "Signature: ______________________________",
-        "",
-        f"Name: {submission.msa_signatory_name or '______________________________'}",
-        f"Designation: {submission.msa_signatory_designation or '______________________________'}",
-        "Date: ______________________________",
-        "Company stamp:",
-        "",
-        "",
-        "Sign, stamp, and upload this declaration in Envelope 1, item 1.4.",
-    ]
-    return _render_text_pdf(lines)
+    html = render_no_advance_html(submission)
+    return HTML(string=html, base_url=str(MSA_DIR)).write_pdf()
 
 
-def _render_text_pdf(lines: list[str]) -> bytes:
-    """Single-page Helvetica text PDF (no external PDF lib)."""
-    # Escape PDF literal string specials
-    safe = []
-    for line in lines:
-        line = line.replace("—", "-")  # Helvetica standard encoding has no em dash
-        safe.append(line.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)"))
+def render_no_advance_html(submission: Envelope1Submission) -> str:
+    template = Template(NO_ADVANCE_HTML.read_text(encoding="utf-8"))
+    return template.render(Context(_party_context(submission)))
 
-    content_lines = ["BT", "/F1 10 Tf", "50 750 Td", "14 TL"]
-    for i, line in enumerate(safe):
-        if i == 0:
-            content_lines.append(f"({line}) Tj")
-        else:
-            content_lines.append("T*")
-            content_lines.append(f"({line}) Tj")
-    content_lines.append("ET")
-    stream = "\n".join(content_lines).encode("latin-1", errors="replace")
 
-    objects: list[bytes] = []
-    objects.append(b"1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj\n")
-    objects.append(b"2 0 obj<< /Type /Pages /Kids [3 0 R] /Count 1 >>endobj\n")
-    objects.append(
-        b"3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
-        b"/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>endobj\n"
-    )
-    objects.append(
-        f"4 0 obj<< /Length {len(stream)} >>stream\n".encode()
-        + stream
-        + b"\nendstream\nendobj\n"
-    )
-    objects.append(b"5 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>endobj\n")
-
-    out = BytesIO()
-    out.write(b"%PDF-1.4\n")
-    offsets = [0]
-    for obj in objects:
-        offsets.append(out.tell())
-        out.write(obj)
-    xref_pos = out.tell()
-    out.write(f"xref\n0 {len(offsets)}\n".encode())
-    out.write(b"0000000000 65535 f \n")
-    for off in offsets[1:]:
-        out.write(f"{off:010d} 00000 n \n".encode())
-    out.write(
-        f"trailer<< /Size {len(offsets)} /Root 1 0 R >>\nstartxref\n{xref_pos}\n%%EOF\n".encode()
-    )
-    return out.getvalue()
+# ---------------------------------------------------------------------------
+# Legacy plain-text declaration (superseded by MSA/no-advance.html + WeasyPrint):
+#
+#   "1. The company does not require any advance payment..."
+#   "2. The company has sufficient working capital..."
+#   "3. Payment will only be claimed according to the agreed payment terms."
+#   Footer: "Sign, stamp, and upload this declaration in Envelope 1, item 1.4."
+# ---------------------------------------------------------------------------

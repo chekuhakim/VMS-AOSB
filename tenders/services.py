@@ -58,6 +58,23 @@ def eligible_companies(project: Project) -> list[Company]:
     ]
 
 
+def _notify_eligible_vendors(
+    *, project: Project, dedupe_key: str, title: str, body: str
+) -> None:
+    """In-app alert plus email for every company allowed to quote on this project."""
+    link = reverse("tenders:project_detail", kwargs={"pk": project.pk})
+    for company in eligible_companies(project):
+        notify_event(
+            users=[company.owner],
+            dedupe_key=f"{dedupe_key}-{company.pk}",
+            title=title,
+            body=body,
+            level=Notification.Level.INFO,
+            link_url=link,
+            link_label="View project",
+        )
+
+
 def next_rfq_code(project: Project) -> tuple[str, int]:
     position = project.rfqs.count() + 1
     taken = set(project.rfqs.values_list("code", flat=True))
@@ -101,20 +118,15 @@ def publish_project(*, project: Project, actor: AbstractBaseUser, request: HttpR
         object_type="Project",
         object_id=project.pk,
     )
-    link = reverse("tenders:project_detail", kwargs={"pk": project.pk})
-    for company in eligible_companies(project):
-        upsert_notification(
-            user=company.owner,
-            dedupe_key=f"tender-open-{project.pk}-{company.pk}",
-            title=f"New project open — {project.title}",
-            body=(
-                f"{project.reference} is open for quotations until "
-                f"{timezone.localtime(project.closing_at):%d %b %Y %H:%M}."
-            ),
-            level=Notification.Level.INFO,
-            link_url=link,
-            link_label="View project",
-        )
+    _notify_eligible_vendors(
+        project=project,
+        dedupe_key=f"tender-open-{project.pk}",
+        title=f"New tender available — {project.title}",
+        body=(
+            f"{project.reference} is open for quotations until "
+            f"{timezone.localtime(project.closing_at):%d %b %Y %H:%M}."
+        ),
+    )
 
 
 @transaction.atomic

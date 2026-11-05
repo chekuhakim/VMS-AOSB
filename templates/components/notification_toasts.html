@@ -1,4 +1,4 @@
-{# Flash messages + system notifications — auto-hide after 7s (marked read, kept in inbox); × dismisses #}
+{# Flash messages + system notifications — auto-hide after 5s (marked read, kept in inbox); × dismisses #}
 <div
   id="app-toast-stack"
   class="pointer-events-none fixed inset-x-0 top-20 z-[60] flex flex-col items-center gap-3 px-4 sm:items-end sm:px-6"
@@ -41,7 +41,7 @@
              {% else %}border-brand/20 bg-brand-50/95 shadow-brand/10
              {% endif %}"
       data-toast
-      data-ttl="7000"
+      data-ttl="5000"
       data-dismiss-url="{% url 'accounts:notification_dismiss' note.pk %}"
       data-read-url="{% url 'accounts:notification_read' note.pk %}"
       role="status"

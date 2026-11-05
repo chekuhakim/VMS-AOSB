@@ -14,10 +14,6 @@
       <div class="flex flex-wrap gap-2">
         {% if project.is_editable %}
           <a href="{% url 'tenders:project_edit' project.pk %}" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">Edit project</a>
-          <form method="post" action="{% url 'tenders:project_publish' project.pk %}" onsubmit="return confirm('Publish this project? Eligible vendors will be notified and the project can no longer be edited.')">
-            {% csrf_token %}
-            <button type="submit" class="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700">Publish</button>
-          </form>
         {% endif %}
       </div>
     {% endif %}
@@ -143,9 +139,27 @@
 
   {% if rfq_form and can_evaluate %}
     <h2 class="mb-3 mt-8 text-lg font-bold tracking-tight text-slate-900">Add RFQ</h2>
+    {% if not project.is_editable %}
+      <p class="mb-3 max-w-3xl text-sm text-slate-600">This project is already published. Adding an RFQ emails every vendor who can quote it.</p>
+    {% endif %}
     <div class="max-w-3xl">
       {% url 'tenders:rfq_add' project.pk as add_url %}
       {% include "tenders/staff/components/rfq_form_fields.html" with form=rfq_form rfq=None action_url=add_url %}
+    </div>
+  {% endif %}
+
+  {% if can_evaluate and project.is_editable %}
+    <div class="mt-8 max-w-3xl rounded-2xl border border-brand/30 bg-brand-50 px-6 py-6 shadow-sm">
+      <h2 class="text-lg font-bold text-slate-900">Publish this project</h2>
+      <p class="mt-1 text-sm text-slate-600">Eligible vendors are emailed when you publish. You can still add another RFQ until quotations close, and each new RFQ emails them again. Existing RFQs stay locked.</p>
+      {% if rows %}
+        <form method="post" action="{% url 'tenders:project_publish' project.pk %}" class="mt-4" onsubmit="return confirm('Publish this project? Eligible vendors will be notified and the project can no longer be edited.')">
+          {% csrf_token %}
+          <button type="submit" class="inline-flex w-full items-center justify-center rounded-xl bg-brand px-8 py-3 text-base font-semibold text-white shadow-sm hover:bg-brand-700">Publish project</button>
+        </form>
+      {% else %}
+        <p class="mt-4 text-sm font-medium text-slate-700">Add at least one RFQ above, then publish.</p>
+      {% endif %}
     </div>
   {% endif %}
 

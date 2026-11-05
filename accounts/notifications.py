@@ -187,6 +187,8 @@ def _tracked_expiries(company: Company) -> list[tuple[str, str, date]]:
 
     tracked: list[tuple[str, str, date]] = []
     for doc_type, label in CompanyDocument.DocType.choices:
+        if doc_type == CompanyDocument.DocType.CIDB and company.no_cidb_registration:
+            continue
         expiry = _doc_expiry(company, doc_type)
         if expiry:
             tracked.append((doc_type, label, expiry))
@@ -228,6 +230,34 @@ def _expiry_message(stage: str, label: str, company_name: str, expiry: date, tod
         "body": f"Expires {when} ({expiry:%d %b %Y}). Upload a renewed PDF before it lapses.",
         "level": Notification.Level.WARNING,
     }
+
+
+# Page loads used to run the sync below on every request. Each query is a round
+# trip to Supabase in Singapore, so keep the result for ten minutes unless a
+# company or document save invalidates it.
+VENDOR_NOTIFICATION_SYNC_SECONDS = 600
+
+
+def _vendor_notification_sync_key(user_id: int) -> str:
+    return f"vendor-notif-sync:{user_id}"
+
+
+def vendor_notification_sync_is_fresh(user_id: int) -> bool:
+    from django.core.cache import cache
+
+    return cache.get(_vendor_notification_sync_key(user_id)) is not None
+
+
+def invalidate_vendor_notification_sync(user_id: int) -> None:
+    from django.core.cache import cache
+
+    cache.delete(_vendor_notification_sync_key(user_id))
+
+
+def _mark_vendor_notification_sync(user_id: int) -> None:
+    from django.core.cache import cache
+
+    cache.set(_vendor_notification_sync_key(user_id), 1, VENDOR_NOTIFICATION_SYNC_SECONDS)
 
 
 def sync_vendor_notifications(user: AbstractBaseUser) -> None:
@@ -316,3 +346,5 @@ def sync_vendor_notifications(user: AbstractBaseUser) -> None:
             ("register-company", "company-", "expiry-")
         ) and note.dedupe_key not in active_keys:
             note.delete()
+
+    _mark_vendor_notification_sync(user.pk)

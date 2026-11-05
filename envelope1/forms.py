@@ -103,6 +103,13 @@ def _yes_no_initial(value: bool | None) -> str | None:
     return "yes" if value else "no"
 
 
+def _set_bound_value(form: forms.Form, name: str, value: object) -> None:
+    """Put a value into a bound form so the re-rendered page keeps it."""
+    data = form.data.copy()
+    data[form.add_prefix(name)] = "" if value is None else str(value)
+    form.data = data
+
+
 def pdf_field_name(doc_type: str) -> str:
     return f"{doc_type}_pdf"
 
@@ -296,6 +303,46 @@ class QuestionnaireStepForm(forms.Form):
 
         changed.extend(self.save_fields())
         submission.save(update_fields=[*changed, "updated_at"] if changed else ["updated_at"])
+
+    def persist_uploaded_files(self, *, user: AbstractBaseUser | None) -> None:
+        """Store PDFs that already passed validation when the rest of the step did not.
+
+        The browser cannot put a chosen file back into the input after an error,
+        so a missing tick or date would otherwise force a full re-upload.
+        """
+        cleaned = self.cleaned_data
+        for item in self.yes_no_items:
+            answer, doc_type = YES_NO_UPLOADS[item]
+            # "No" means the upload is intentionally discarded
+            if cleaned.get(answer) is False:
+                continue
+            pdf_name = pdf_field_name(doc_type)
+            pdf = cleaned.get(pdf_name)
+            if pdf and pdf_name not in self.errors:
+                self.existing[doc_type] = save_envelope1_pdf(
+                    submission=self.submission, doc_type=doc_type, uploaded=pdf, user=user
+                )
+                self.fields[pdf_name].required = False
+
+        for item in self.required_upload_items:
+            doc_type = REQUIRED_UPLOADS[item]
+            pdf_name = pdf_field_name(doc_type)
+            pdf = cleaned.get(pdf_name)
+            exp_name = expiry_field_name(doc_type)
+            expiry = cleaned.get(exp_name) if exp_name not in self.errors else None
+            if pdf and pdf_name not in self.errors:
+                self.existing[doc_type] = save_envelope1_pdf(
+                    submission=self.submission,
+                    doc_type=doc_type,
+                    uploaded=pdf,
+                    user=user,
+                    expiry_date=expiry,
+                )
+                self.fields[pdf_name].required = False
+            elif expiry and doc_type in self.existing:
+                doc = self.existing[doc_type]
+                doc.expiry_date = expiry
+                doc.save(update_fields=["expiry_date"])
 
 
 class Step3FinancialsForm(QuestionnaireStepForm):
@@ -525,6 +572,12 @@ class BaseRowFormSet(forms.BaseFormSet):
         if len(self.active_forms()) < self.min_rows:
             raise ValidationError(self.min_rows_message)
 
+    def persist_uploaded_files(
+        self, *, submission: Envelope1Submission, user: AbstractBaseUser | None
+    ) -> None:
+        """Keep complete uploaded rows when another row or field on the step fails."""
+        return
+
 
 class FinancialStatementFormSet(BaseRowFormSet):
     min_rows = MIN_FINANCIAL_STATEMENTS
@@ -570,6 +623,35 @@ class FinancialStatementFormSet(BaseRowFormSet):
                 FinancialStatement.objects.create(
                     submission=submission, year=form.cleaned_data["year"], document=doc
                 )
+
+    def persist_uploaded_files(
+        self, *, submission: Envelope1Submission, user: AbstractBaseUser | None
+    ) -> None:
+        for form in self.forms:
+            if self._is_deleted(form):
+                continue
+            cleaned = getattr(form, "cleaned_data", {})
+            pdf = cleaned.get("pdf")
+            year = cleaned.get("year")
+            if not pdf or "pdf" in form.errors or year is None or "year" in form.errors:
+                continue
+            row = submission.financial_statements.filter(pk=self._row_id(form)).first()
+            doc = save_envelope1_pdf(
+                submission=submission,
+                doc_type=Envelope1Document.DocType.AUDITED_FINANCIALS,
+                uploaded=pdf,
+                user=user,
+            )
+            if row:
+                row.year = year
+                row.document = doc
+                row.save()
+            else:
+                row = FinancialStatement.objects.create(
+                    submission=submission, year=year, document=doc
+                )
+                _set_bound_value(form, "row_id", row.pk)
+            form.existing_row = row
 
 
 class PrimarySupplierFormSet(BaseRowFormSet):
@@ -626,6 +708,35 @@ class PastProjectFormSet(BaseRowFormSet):
                 PastProject.objects.create(
                     submission=submission, project_name=name, document=doc, position=position
                 )
+
+    def persist_uploaded_files(
+        self, *, submission: Envelope1Submission, user: AbstractBaseUser | None
+    ) -> None:
+        for form in self.forms:
+            if self._is_deleted(form):
+                continue
+            cleaned = getattr(form, "cleaned_data", {})
+            pdf = cleaned.get("pdf")
+            name = (cleaned.get("project_name") or "").strip()
+            if not pdf or "pdf" in form.errors or not name or "project_name" in form.errors:
+                continue
+            row = submission.past_projects.filter(pk=self._row_id(form)).first()
+            doc = save_envelope1_pdf(
+                submission=submission,
+                doc_type=Envelope1Document.DocType.PAST_PROJECTS,
+                uploaded=pdf,
+                user=user,
+            )
+            if row:
+                row.project_name = name
+                row.document = doc
+                row.save()
+            else:
+                row = PastProject.objects.create(
+                    submission=submission, project_name=name, document=doc, position=0
+                )
+                _set_bound_value(form, "row_id", row.pk)
+            form.existing_row = row
 
 
 _ROW_TABLES: dict[str, tuple[type[forms.Form], type[BaseRowFormSet], str, int]] = {

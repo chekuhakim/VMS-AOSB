@@ -42,6 +42,11 @@ urlpatterns = [
         name="envelope1_send_director",
     ),
     path(
+        "submitted-envelope-1/<int:pk>/reopen-evaluation/",
+        views.envelope1_reopen_eval,
+        name="envelope1_reopen_eval",
+    ),
+    path(
         "submitted-envelope-1/<int:pk>/reject/",
         views.envelope1_reject_eval,
         name="envelope1_reject_eval",

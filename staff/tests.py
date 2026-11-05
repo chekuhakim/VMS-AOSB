@@ -124,6 +124,41 @@ class EnvelopeSegregationOfDutiesTests(TestCase):
         self.submission.refresh_from_db()
         self.assertEqual(self.submission.status, S.PENDING_DIRECTOR)
 
+    def test_finished_evaluation_shows_checkmark_without_director_field(self) -> None:
+        Envelope1Submission.objects.filter(pk=self.submission.pk).update(
+            status=S.PENDING_DIRECTOR, locked_at=self.submission.updated_at
+        )
+        page = staff_client(self.procurement).get(
+            reverse("staff:envelope1_evaluate", args=[self.submission.pk, 6])
+        )
+        self.assertContains(page, "Evaluation complete")
+        self.assertContains(page, reverse("staff:envelope1_reopen_eval", args=[self.submission.pk]))
+        self.assertNotContains(page, "Director decision")
+        self.assertNotContains(page, 'name="decision"')
+
+    def test_procurement_can_reopen_evaluation(self) -> None:
+        Envelope1Submission.objects.filter(pk=self.submission.pk).update(status=S.PENDING_DIRECTOR)
+        staff_client(self.procurement).post(
+            reverse("staff:envelope1_reopen_eval", args=[self.submission.pk])
+        )
+        self.submission.refresh_from_db()
+        self.assertEqual(self.submission.status, S.IN_PROGRESS)
+
+    def test_director_reviews_read_only_and_decides_on_the_last_step(self) -> None:
+        Envelope1Submission.objects.filter(pk=self.submission.pk).update(status=S.PENDING_DIRECTOR)
+        client = staff_client(self.director)
+        queue = client.get(reverse("staff:approval_queue"))
+        review = reverse("staff:envelope1_evaluate", args=[self.submission.pk, 1]) + "?review=1"
+        self.assertContains(queue, review)
+        self.assertNotContains(queue, 'name="decision"')
+        first = client.get(review)
+        self.assertContains(first, "Read-only evaluation")
+        self.assertNotContains(first, 'name="decision"')
+        last = client.get(reverse("staff:envelope1_evaluate", args=[self.submission.pk, 6]) + "?review=1")
+        self.assertContains(last, "Approve")
+        self.assertContains(last, "Reject")
+        self.assertNotContains(last, "Save Progress")
+
     def test_director_can_approve(self) -> None:
         Envelope1Submission.objects.filter(pk=self.submission.pk).update(status=S.PENDING_DIRECTOR)
         staff_client(self.director).post(

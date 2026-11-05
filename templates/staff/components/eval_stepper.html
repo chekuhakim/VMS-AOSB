@@ -3,7 +3,7 @@
   <ol class="flex min-w-[44rem] items-center gap-1">
     {% for s in stepper %}
       <li class="flex items-center gap-1 {% if not forloop.last %}flex-1{% endif %}">
-        <a href="{% url 'staff:envelope1_evaluate' submission.pk s.num %}"
+        <a href="{% url 'staff:envelope1_evaluate' submission.pk s.num %}{% if review_query %}?{{ review_query }}{% endif %}"
            class="group flex items-center gap-2 rounded-xl px-1.5 py-1 transition hover:bg-brand-50"
            {% if s.num == step %}aria-current="step"{% endif %}>
           <span class="relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full

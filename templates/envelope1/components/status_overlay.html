@@ -1,69 +1,100 @@
-{# Permanent overlay over the wizard once Envelope 1 leaves Draft. Expects `submission`, `pending_withdrawal`. #}
-{# Pinned below the top bar (h-16, z-40) and beside the open sidebar (w-72, z-30) so both stay usable #}
-<div class="fixed inset-x-0 bottom-0 top-16 z-20 flex items-center justify-center overflow-y-auto bg-white/30 px-4 py-6 backdrop-blur-[3px] transition-[left] duration-300 ease-out lg:[.nav-open_&]:left-72"
-     role="dialog" aria-modal="true" aria-labelledby="e1-overlay-title" aria-describedby="e1-overlay-text">
-  <script>document.documentElement.classList.add('overflow-hidden')</script>
-  <div class="w-full max-w-md rounded-2xl border border-slate-200/80 bg-white px-6 py-8 text-center shadow-2xl sm:px-8">
-    {% if submission.status == "rejected" %}
-      <div class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-rose-500 text-white ring-8 ring-rose-100">
-        <svg class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
+{# Shown in place of the wizard once Envelope 1 leaves Draft. Expects `submission`, `company`, `pending_withdrawal`. #}
+<div class="mx-auto flex min-h-[70vh] w-full max-w-md items-center px-2 py-8">
+  <div class="w-full rounded-3xl border border-white/70 bg-white px-8 py-10 text-center shadow-xl shadow-slate-200/80"
+       role="status" aria-labelledby="e1-overlay-title" aria-describedby="e1-overlay-text">
+    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+      Envelope 1 · {{ company.name }}
+    </p>
+
+    {% if pending_withdrawal %}
+      <div class="mx-auto mt-8 flex h-28 w-28 items-center justify-center rounded-full bg-amber-50">
+        <div class="flex h-16 w-16 items-center justify-center rounded-full bg-amber-500 text-white shadow-lg shadow-amber-200">
+          <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2" />
+            <circle cx="12" cy="12" r="8.25" />
+          </svg>
+        </div>
+      </div>
+    {% elif submission.status == "rejected" %}
+      <div class="mx-auto mt-8 flex h-28 w-28 items-center justify-center rounded-full bg-rose-50">
+        <div class="flex h-16 w-16 items-center justify-center rounded-full bg-rose-500 text-white shadow-lg shadow-rose-200">
+          <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </div>
+      </div>
+    {% elif submission.can_reopen or submission.status == "approved" %}
+      <div class="mx-auto mt-8 flex h-28 w-28 items-center justify-center rounded-full bg-emerald-50">
+        <div class="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-200">
+          <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+        </div>
       </div>
     {% else %}
-      <div class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500 text-white ring-8 ring-emerald-100">
-        <svg class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-        </svg>
+      <div class="mx-auto mt-8 flex h-28 w-28 items-center justify-center rounded-full bg-brand-50">
+        <div class="flex h-16 w-16 items-center justify-center rounded-full bg-brand text-white shadow-lg shadow-brand/30">
+          <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+          </svg>
+        </div>
       </div>
     {% endif %}
 
-    <h2 id="e1-overlay-title" class="mt-6 text-xl font-bold tracking-tight text-slate-900">
+    <h1 id="e1-overlay-title" class="mt-6 text-2xl font-bold tracking-tight text-slate-900">
       {% if submission.can_reopen %}
         Envelope 1 submitted
+      {% elif pending_withdrawal %}
+        Withdrawal requested
       {% elif submission.status == "pending_director_approval" %}
-        Envelope 1 awaiting Director approval
+        Waiting for Director approval
       {% elif submission.status == "approved" %}
         Envelope 1 approved
       {% elif submission.status == "rejected" %}
         Envelope 1 not approved
       {% else %}
-        Envelope 1 under procurement check
+        Envelope 1 is locked
       {% endif %}
-    </h2>
-    <p id="e1-overlay-text" class="mt-2 text-sm text-slate-600">
+    </h1>
+    <p id="e1-overlay-text" class="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-slate-600">
       {% if submission.can_reopen %}
-        You can edit the submission before the procurement check.
+        You can still edit this submission until Procurement starts the check.
       {% elif pending_withdrawal %}
-        Your withdrawal request ({{ pending_withdrawal.created_at|date:"j M Y, g:i A" }}) is waiting for Procurement review.
+        Your request from {{ pending_withdrawal.created_at|date:"j M Y, g:i A" }} is with Procurement. This submission stays locked until they decide.
+      {% elif submission.status == "pending_director_approval" %}
+        Procurement has finished the check. This submission stays locked until the Director decides. Request a withdrawal if you need to change it first.
+      {% elif submission.status == "approved" %}
+        This submission is approved and locked. Request a withdrawal only if something in it needs to change.
+      {% elif submission.status == "rejected" %}
+        This submission was not approved and stays locked. Request a withdrawal if you want to revise it and submit again.
       {% elif submission.is_locked %}
-        Procurement has locked your submission. Need to make changes? Request a withdrawal — once approved, you can edit again.
+        Procurement has started the check, so this submission is locked. Request a withdrawal if you need to change it.
       {% else %}
-        Changes are not allowed at this stage.
+        This submission can no longer be edited.
       {% endif %}
     </p>
 
-    <div class="mt-6 flex flex-col gap-2">
+    <div class="mt-8 space-y-3">
       {% if submission.can_reopen %}
         <form method="post" action="{% url 'envelope1:reopen' submission.pk %}">
           {% csrf_token %}
           <button type="submit"
-                  class="inline-flex w-full items-center justify-center rounded-xl bg-brand px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2">
+                  class="inline-flex w-full items-center justify-center rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2">
             Edit
           </button>
         </form>
       {% elif pending_withdrawal %}
-        <span class="inline-flex w-full items-center justify-center rounded-xl border border-amber-300 bg-amber-50 px-6 py-2.5 text-sm font-semibold text-amber-800">
-          Withdrawal requested
-        </span>
+        <p class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+          Waiting for Procurement
+        </p>
       {% elif submission.is_locked %}
         <a href="{% url 'envelope1:withdrawal' submission.pk %}"
-           class="inline-flex w-full items-center justify-center rounded-xl bg-rose-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2">
+           class="inline-flex w-full items-center justify-center rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2">
           Request a withdrawal
         </a>
       {% endif %}
       <a href="{% url 'core:dashboard' %}"
-         class="inline-flex w-full items-center justify-center rounded-xl px-6 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900">
+         class="inline-flex w-full items-center justify-center rounded-xl px-6 py-2.5 text-sm font-semibold text-slate-500 hover:text-slate-800">
         Back to dashboard
       </a>
     </div>

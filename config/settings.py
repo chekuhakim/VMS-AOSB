@@ -18,7 +18,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ---------------------------------------------------------------------------
 env = environ.Env(
     DEBUG=(bool, True),
-    USE_SQLITE=(bool, True),  # True until Supabase credentials are provided
+    USE_SQLITE=(bool, True),  # True uses the local SQLite file; False when DATABASE_URL is set
 )
 
 environ.Env.read_env(BASE_DIR / ".env")
@@ -29,6 +29,10 @@ SECRET_KEY = env(
 )
 DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1", "testserver"])
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
+# Cloudflare Tunnel terminates TLS and forwards plain HTTP to this process.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
 
 # ---------------------------------------------------------------------------
 # Applications
@@ -59,6 +63,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     # DEBUG only: keep OAuth redirect_uri on localhost (not 127.0.0.1)
     "accounts.middleware.PreferLocalhostMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -103,6 +108,12 @@ if env.bool("USE_SQLITE", default=True) or not env("DATABASE_URL", default=""):
     }
 else:
     DATABASES = {"default": env.db("DATABASE_URL")}
+    # Reuse the connection across requests. prepare_threshold is off so the
+    # same settings still work with a transaction-mode pooler (port 6543).
+    DATABASES["default"]["CONN_MAX_AGE"] = 60
+    DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
+    DATABASES["default"].setdefault("OPTIONS", {})
+    DATABASES["default"]["OPTIONS"]["prepare_threshold"] = None
 
 # ---------------------------------------------------------------------------
 # Auth / allauth
@@ -203,6 +214,14 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
@@ -218,7 +237,7 @@ SUPABASE_STORAGE_BUCKET = env("SUPABASE_STORAGE_BUCKET", default="vendor-documen
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # ---------------------------------------------------------------------------
-# Test runs: `manage.py test` must never touch the live Supabase database or bucket,
+# Test runs: `manage.py test` must never touch the live database or storage bucket,
 # whatever .env says — use in-memory SQLite, local temp storage, and fast hashing.
 # ---------------------------------------------------------------------------
 TESTING = len(sys.argv) > 1 and sys.argv[1] == "test"

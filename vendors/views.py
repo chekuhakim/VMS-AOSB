@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.conf import settings
 from django.db import transaction
 from django.http import HttpRequest, HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
@@ -28,7 +27,6 @@ from vendors.forms import (
     Step5LHDNForm,
     Step6DeclarationForm,
 )
-from vendors.sample_data import create_sample_company
 from vendors.models import Company, CompanyDocument
 from vendors.rules import REASON_LABELS, evaluate_company_registration
 
@@ -51,7 +49,7 @@ STEP_META = {
     3: {
         "title": "CIDB Registration",
         "short": "CIDB Registration",
-        "hint": "Provide your CIDB registration details and certificate PDF.",
+        "hint": "Provide your CIDB registration and certificate, or confirm that this company does not hold one.",
         "form": Step3CIDBForm,
     },
     4: {
@@ -146,25 +144,6 @@ def register_company(request: HttpRequest) -> HttpResponse:
         return blocked
 
     if request.method == "POST":
-        # DEBUG / local testing: one-click sample company with filled wizard fields
-        if request.POST.get("use_sample") == "1":
-            company = create_sample_company(owner=request.user)
-            set_active_company_id(request, company.pk)
-            write_audit(
-                category=AuditLog.Category.COMPANY,
-                action="company_sample_created",
-                actor=request.user,
-                request=request,
-                changes={"name": company.name, "sample": True},
-                object_type="Company",
-                object_id=company.pk,
-            )
-            messages.success(
-                request,
-                f"Sample company “{company.name}” loaded — review steps or go to declaration.",
-            )
-            return redirect("vendors:wizard_step", pk=company.pk, step=1)
-
         name = (request.POST.get("name") or "").strip()
         if not name:
             messages.error(request, "Enter a registered company name to start.")
@@ -194,11 +173,7 @@ def register_company(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "vendors/register_start.html",
-        {
-            "page_title": "Register company",
-            "sample_enabled": settings.DEBUG,
-            "sample_name": "Cahaya Engineering Sdn Bhd",
-        },
+        {"page_title": "Register company"},
     )
 
 
@@ -255,7 +230,10 @@ def wizard_step(request: HttpRequest, pk: int, step: int) -> HttpResponse:
     if step == 2:
         form_kwargs["require_pdf"] = not has_pdf[CompanyDocument.DocType.SSM]
     elif step == 3:
-        form_kwargs["require_pdf"] = not has_pdf[CompanyDocument.DocType.CIDB]
+        opted_out = company.no_cidb_registration
+        if request.method == "POST":
+            opted_out = request.POST.get("no_cidb_registration") in ("on", "true", "True", "1")
+        form_kwargs["require_pdf"] = not opted_out and not has_pdf[CompanyDocument.DocType.CIDB]
     elif step == 4:
         electrical = company.includes_electrical_work is True
         if request.method == "POST":
@@ -290,6 +268,18 @@ def wizard_step(request: HttpRequest, pk: int, step: int) -> HttpResponse:
             if step < 6:
                 return redirect("vendors:wizard_step", pk=company.pk, step=step + 1)
             return _submit_registration(request, company)
+        if _keep_registration_upload(request, company, step, form):
+            has_pdf = {
+                CompanyDocument.DocType.SSM: company.documents.filter(
+                    doc_type=CompanyDocument.DocType.SSM
+                ).exists(),
+                CompanyDocument.DocType.CIDB: company.documents.filter(
+                    doc_type=CompanyDocument.DocType.CIDB
+                ).exists(),
+                CompanyDocument.DocType.ST: company.documents.filter(
+                    doc_type=CompanyDocument.DocType.ST
+                ).exists(),
+            }
     else:
         form = form_class(**form_kwargs)
 
@@ -313,6 +303,54 @@ def wizard_step(request: HttpRequest, pk: int, step: int) -> HttpResponse:
     )
 
 
+def _keep_registration_upload(request: HttpRequest, company: Company, step: int, form) -> bool:  # type: ignore[no-untyped-def]
+    """Save a valid PDF even when another field on the step failed.
+
+    Returns True when a file was stored, so the page can show it as already on file
+    and the file input is no longer required.
+    """
+    cleaned = form.cleaned_data
+    if step == 2 and cleaned.get("ssm_pdf") and "ssm_pdf" not in form.errors:
+        save_company_pdf(
+            company=company,
+            doc_type=CompanyDocument.DocType.SSM,
+            uploaded=cleaned["ssm_pdf"],
+            user=request.user,
+            expiry_date=cleaned.get("ssm_document_expiry")
+            if "ssm_document_expiry" not in form.errors
+            else None,
+        )
+        form.fields["ssm_pdf"].required = False
+        return True
+    if step == 3 and cleaned.get("no_cidb_registration"):
+        return False
+    if step == 3 and cleaned.get("cidb_pdf") and "cidb_pdf" not in form.errors:
+        save_company_pdf(
+            company=company,
+            doc_type=CompanyDocument.DocType.CIDB,
+            uploaded=cleaned["cidb_pdf"],
+            user=request.user,
+            expiry_date=cleaned.get("cidb_certificate_expiry")
+            if "cidb_certificate_expiry" not in form.errors
+            else None,
+        )
+        form.fields["cidb_pdf"].required = False
+        return True
+    if step == 4 and cleaned.get("st_pdf") and "st_pdf" not in form.errors:
+        save_company_pdf(
+            company=company,
+            doc_type=CompanyDocument.DocType.ST,
+            uploaded=cleaned["st_pdf"],
+            user=request.user,
+            expiry_date=cleaned.get("st_certificate_expiry")
+            if "st_certificate_expiry" not in form.errors
+            else None,
+        )
+        form.fields["st_pdf"].required = False
+        return True
+    return False
+
+
 def _maybe_store_pdfs(request: HttpRequest, company: Company, step: int, form) -> None:  # type: ignore[no-untyped-def]
     if step == 2 and form.cleaned_data.get("ssm_pdf"):
         save_company_pdf(
@@ -322,6 +360,9 @@ def _maybe_store_pdfs(request: HttpRequest, company: Company, step: int, form) -
             user=request.user,
             expiry_date=form.cleaned_data.get("ssm_document_expiry"),
         )
+    elif step == 3 and form.cleaned_data.get("no_cidb_registration"):
+        # The declaration replaces the certificate, so an earlier upload must not linger.
+        company.documents.filter(doc_type=CompanyDocument.DocType.CIDB).delete()
     elif step == 3 and form.cleaned_data.get("cidb_pdf"):
         save_company_pdf(
             company=company,

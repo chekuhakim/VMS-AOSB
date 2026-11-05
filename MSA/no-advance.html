@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Declaration of No Advance Payment — Alpha Orange Sdn Bhd</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm 22mm 18mm 22mm;
+            @top-center {
+                content: "ALPHA ORANGE SDN BHD   ·   NO ADVANCE PAYMENT DECLARATION";
+                font-family: "Liberation Sans", sans-serif;
+                font-size: 7.5pt;
+                letter-spacing: 0.12em;
+                color: #5c6b7a;
+            }
+            @bottom-center {
+                content: counter(page);
+                font-family: "Liberation Sans", sans-serif;
+                font-size: 9pt;
+                color: #5c6b7a;
+            }
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: "Liberation Serif", "Times New Roman", Times, serif;
+            font-size: 10.5pt;
+            line-height: 1.5;
+            color: #1c1c1c;
+            margin: 0;
+            hyphens: manual;
+        }
+        h1 {
+            font-family: "Liberation Sans", sans-serif;
+            font-size: 12pt;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-align: center;
+            text-transform: uppercase;
+            color: #1e3a5f;
+            margin: 0 0 3pt;
+        }
+        .kicker {
+            font-family: "Liberation Sans", sans-serif;
+            font-size: 8pt;
+            letter-spacing: 0.2em;
+            text-align: center;
+            text-transform: uppercase;
+            color: #5c6b7a;
+            margin: 0 0 8pt;
+        }
+        hr.rule {
+            border: none;
+            border-top: 0.8pt solid #1e3a5f;
+            margin: 0 0 14pt;
+        }
+        h2 {
+            font-family: "Liberation Sans", sans-serif;
+            font-size: 10.5pt;
+            font-weight: 700;
+            color: #1e3a5f;
+            margin: 13pt 0 4pt;
+            break-after: avoid;
+        }
+        p { margin: 0 0 8pt; text-align: justify; }
+        p.cl {
+            padding-left: 1.7em;
+            text-indent: -1.7em;
+        }
+        .n {
+            font-family: "Liberation Sans", sans-serif;
+            font-size: 9pt;
+            font-weight: 700;
+            color: #1e3a5f;
+        }
+        .blank {
+            display: inline-block;
+            border-bottom: 0.6pt solid #1c1c1c;
+            min-width: 48mm;
+            height: 0.85em;
+            vertical-align: baseline;
+        }
+        .blank.long { min-width: 72mm; }
+        .sig-block {
+            margin-top: 14pt;
+            break-inside: avoid;
+            font-size: 9.5pt;
+        }
+        .sig-block p { text-align: left; }
+        .sign-line {
+            border-bottom: 0.7pt solid #1c1c1c;
+            height: 28pt;
+            margin: 10pt 0 4pt;
+        }
+        .who {
+            font-family: "Liberation Sans", sans-serif;
+            font-size: 8pt;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #5c6b7a;
+            margin: 0 0 2pt;
+        }
+        .stamp-box {
+            border: 0.6pt solid #9ca3af;
+            height: 22mm;
+            margin-top: 8pt;
+            padding: 6pt 8pt;
+            font-size: 9pt;
+            color: #5c6b7a;
+        }
+    </style>
+</head>
+<body>
+
+    <p class="kicker">Alpha Orange Sdn Bhd</p>
+    <h1>Declaration of No Advance Payment</h1>
+    <hr class="rule">
+
+    <p>This Declaration is made on this {{ day }} day of {{ month }}, {{ year }} by:</p>
+
+    <p><strong>{% if company_name %}{{ company_name }}{% else %}<span class="blank long"></span>{% endif %}</strong> (Company No: {% if company_no %}{{ company_no }}{% else %}<span class="blank"></span>{% endif %}), of {% if address %}{{ address }}{% else %}<span class="blank long"></span>{% endif %} (the “Contractor”),</p>
+
+    <p>in favour of <strong>Alpha Orange Sdn Bhd (600527-V)</strong>, of 8-1F, Jalan Setia Perdana BE, U13/BE, Bandar Setia Alam, 40170 Shah Alam, Selangor (the “Client”).</p>
+
+    <p><strong>WHEREAS</strong> the Contractor wishes to be engaged by the Client for telecommunication tower and associated civil, mechanical, and electrical works, on the terms of the Client’s Master Service Agreement and the purchase orders or statements of work issued under it.</p>
+
+    <p><strong>NOW THE CONTRACTOR DECLARES</strong> as follows:</p>
+
+    <h2>1. No advance payment</h2>
+    <p>The Contractor shall not request, demand, or accept any advance payment, deposit, down payment, or mobilisation payment from the Client before the works, or the relevant milestone, described in the applicable purchase order or statement of work have been performed. The Contractor is not entitled to any such payment.</p>
+
+    <h2>2. Capacity to mobilise</h2>
+    <p>The Contractor has, and will maintain, sufficient working capital, bank facilities, or supplier credit to mobilise, carry out, and complete each purchase order or statement of work up to the agreed milestone before submitting a claim for payment.</p>
+
+    <h2>3. Payment only as agreed</h2>
+    <p>The Contractor shall claim payment only for milestones achieved, and only in accordance with Section 4 of the Master Service Agreement and the payment terms of the applicable purchase order or statement of work. A claim shall be supported by the documents that purchase order or statement of work requires.</p>
+
+    <h2>4. No variation by later request</h2>
+    <p>A request for advance payment, whether oral or written, does not vary this Declaration or the Master Service Agreement. The Client may reject it without affecting the Contractor’s obligation to proceed with the works.</p>
+
+    <h2>5. Continuing effect</h2>
+    <p>This Declaration applies to every purchase order or statement of work accepted while it remains in force, and it continues until the Client agrees otherwise in writing.</p>
+
+    <p style="margin-top: 14pt;"><strong>IN WITNESS WHEREOF</strong> the Contractor has executed this Declaration on the date stated above.</p>
+
+    <div class="sig-block">
+        <p class="who">Contractor</p>
+        <p><strong>{% if company_name %}{{ company_name }}{% else %}<span class="blank long"></span>{% endif %}</strong></p>
+        <div class="sign-line"></div>
+        <p>Signed by (Name):<br>{% if signatory_name %}{{ signatory_name }}{% else %}<span class="blank long"></span>{% endif %}</p>
+        <p>Designation: {% if signatory_designation %}{{ signatory_designation }}{% else %}<span class="blank"></span>{% endif %}</p>
+        <p style="margin-top: 12pt;">In the presence of:</p>
+        <p>Name: <span class="blank long"></span></p>
+        <p class="stamp-box">Company stamp</p>
+    </div>
+
+</body>
+</html>

@@ -208,6 +208,31 @@ def send_to_director(
 
 
 @transaction.atomic
+def reopen_evaluation(
+    *,
+    submission: Envelope1Submission,
+    actor: AbstractBaseUser,
+    request: HttpRequest | None = None,
+) -> Envelope1Submission:
+    """Pull a pack back from the Director so Procurement can change the checklist."""
+    if submission.status != Envelope1Submission.Status.PENDING_DIRECTOR:
+        raise ValueError("This evaluation is not waiting for the Director.")
+    submission.status = Envelope1Submission.Status.IN_PROGRESS
+    submission.save(update_fields=["status", "updated_at"])
+    Notification.objects.filter(dedupe_key=f"staff-e1-{submission.pk}-director").delete()
+    write_audit(
+        category=AuditLog.Category.EVALUATION,
+        action="envelope1_evaluation_reopened",
+        actor=actor,
+        request=request,
+        changes={"status": submission.status},
+        object_type="Envelope1Submission",
+        object_id=submission.pk,
+    )
+    return submission
+
+
+@transaction.atomic
 def reject_at_evaluation(
     *,
     submission: Envelope1Submission,

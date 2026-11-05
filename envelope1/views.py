@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from urllib.parse import quote
+
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -39,7 +41,12 @@ from envelope1.models import (
     Envelope1Submission,
     WithdrawalRequest,
 )
-from envelope1.msa import build_draft_msa_pdf, build_no_advance_pdf
+from envelope1.msa import (
+    build_draft_msa_pdf,
+    build_no_advance_pdf,
+    msa_download_filename,
+    no_advance_download_filename,
+)
 from envelope1.services import (
     can_access_envelope1,
     get_or_create_draft,
@@ -269,6 +276,11 @@ def envelope1_wizard(request: HttpRequest, pk: int, step: int) -> HttpResponse:
                     link_label="Review Envelope 1",
                 )
                 return redirect("envelope1:wizard", pk=submission.pk, step=6)
+            # Keep PDFs that were valid. The browser cannot restore a file input
+            # after this page is shown again with the other errors.
+            form.persist_uploaded_files(user=request.user)
+            if table_in_use:
+                row_formset.persist_uploaded_files(submission=submission, user=request.user)
         if request.method == "POST":
             messages.error(request, "Please fix the highlighted fields.")
 
@@ -350,9 +362,10 @@ def download_draft_msa(request: HttpRequest, pk: int) -> HttpResponse:
         messages.error(request, "Save MSA party details before downloading the draft.")
         return redirect("envelope1:wizard", pk=submission.pk, step=1)
     pdf = build_draft_msa_pdf(submission)
+    filename = msa_download_filename(submission)
     response = HttpResponse(pdf, content_type="application/pdf")
     response["Content-Disposition"] = (
-        f'attachment; filename="draft-msa-cycle-{submission.cycle_number}.pdf"'
+        f"attachment; filename=\"{filename}\"; filename*=UTF-8''{quote(filename)}"
     )
     write_audit(
         category=AuditLog.Category.DOCUMENT,
@@ -378,8 +391,11 @@ def download_no_advance_declaration(request: HttpRequest, pk: int) -> HttpRespon
     if not submission.msa_party_saved_at:
         messages.error(request, "Save MSA party details before downloading the declaration.")
         return redirect("envelope1:wizard", pk=submission.pk, step=1)
+    filename = no_advance_download_filename(submission)
     response = HttpResponse(build_no_advance_pdf(submission), content_type="application/pdf")
-    response["Content-Disposition"] = 'attachment; filename="no-advance-payment-declaration.pdf"'
+    response["Content-Disposition"] = (
+        f"attachment; filename=\"{filename}\"; filename*=UTF-8''{quote(filename)}"
+    )
     write_audit(
         category=AuditLog.Category.DOCUMENT,
         action="envelope1_no_advance_template_downloaded",

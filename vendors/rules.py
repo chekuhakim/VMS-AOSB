@@ -32,7 +32,8 @@ def evaluate_company_registration(company: Company) -> EvaluationResult:
     """Return approve/reject for a fully filled registration.
 
     Compliance gates (ISO-aligned completeness + expiry):
-    - Steps 1–3, 5 and the step 6 declaration required always
+    - Steps 1–2, 5 and the step 6 declaration required always
+    - Step 3 required unless the company declared it does not hold a CIDB registration
     - Step 4 required only when includes_electrical_work is True
     - Required PDFs present; enterprise SSM + CIDB (+ ST if electrical) not expired
     - Declaration accepted with a stored text version
@@ -56,18 +57,20 @@ def evaluate_company_registration(company: Company) -> EvaluationResult:
         elif _expired(company.ssm_document_expiry, today):
             reasons.append("ssm_document_expired")
 
-    # Step 3
-    if not (
-        company.cidb_registration_number
-        and company.cidb_grade
-        and company.cidb_certificate_expiry
-    ):
-        reasons.append("incomplete_cidb")
-    cidb_doc = _latest_doc(company, CompanyDocument.DocType.CIDB)
-    if cidb_doc is None:
-        reasons.append("missing_cidb_document")
-    if _expired(company.cidb_certificate_expiry, today):
-        reasons.append("cidb_certificate_expired")
+    # Step 3 — skipped when the vendor declared they hold no CIDB registration.
+    # A blank grade still fails any tender that sets a minimum CIDB grade.
+    if not company.no_cidb_registration:
+        if not (
+            company.cidb_registration_number
+            and company.cidb_grade
+            and company.cidb_certificate_expiry
+        ):
+            reasons.append("incomplete_cidb")
+        cidb_doc = _latest_doc(company, CompanyDocument.DocType.CIDB)
+        if cidb_doc is None:
+            reasons.append("missing_cidb_document")
+        if _expired(company.cidb_certificate_expiry, today):
+            reasons.append("cidb_certificate_expired")
 
     # Step 4 — only when electrical scope is yes
     if company.includes_electrical_work is None:

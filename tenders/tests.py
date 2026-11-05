@@ -7,6 +7,7 @@ from datetime import timedelta
 from django.core import mail
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from accounts.models import Notification
 from accounts.roles import PROCUREMENT
@@ -21,7 +22,7 @@ from core.testing import (
     vendor_client,
 )
 from envelope1.models import Envelope1Submission
-from tenders.models import Quotation
+from tenders.models import Project, Quotation, RFQ
 
 
 class SealedBiddingTests(TestCase):
@@ -246,3 +247,76 @@ class QuotationNotificationTests(TestCase):
         everything = note.title + note.body + sent[0].body + sent[0].alternatives[0][0]
         for secret in (self.company.name, "54321", "54,321"):
             self.assertNotIn(secret, everything)
+
+
+class AddRfqAfterPublishTests(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.procurement = make_user("procurement", PROCUREMENT)
+        cls.vendor = make_user("vendor")
+        cls.company = make_company(cls.vendor)
+        make_submission(cls.company, Envelope1Submission.Status.APPROVED)
+
+    def test_open_project_accepts_another_rfq_and_emails_vendors(self) -> None:
+        project, _rfq = make_open_project(self.procurement)
+        client = staff_client(self.procurement)
+        page = client.get(reverse("tenders:tender_detail", args=[project.pk]))
+        self.assertContains(page, "Add RFQ")
+        with self.captureOnCommitCallbacks(execute=True):
+            response = client.post(
+                reverse("tenders:rfq_add", args=[project.pk]),
+                {"title": "Steel works"},
+            )
+        self.assertRedirects(response, reverse("tenders:tender_detail", args=[project.pk]))
+        added = project.rfqs.get(title="Steel works")
+        self.assertEqual(added.code, "RFQ-02")
+        note = Notification.objects.get(
+            user=self.vendor, dedupe_key=f"tender-rfq-{added.pk}-{self.company.pk}"
+        )
+        self.assertIn("New tender available", note.title)
+        sent = [message for message in mail.outbox if self.vendor.email in message.to]
+        self.assertEqual(len(sent), 1)
+        self.assertIn("Steel works", sent[0].body)
+
+    def test_published_rfq_cannot_be_edited(self) -> None:
+        project, rfq = make_open_project(self.procurement)
+        client = staff_client(self.procurement)
+        response = client.post(
+            reverse("tenders:rfq_edit", args=[project.pk, rfq.pk]),
+            {"title": "Changed"},
+        )
+        self.assertRedirects(response, reverse("tenders:tender_detail", args=[project.pk]))
+        rfq.refresh_from_db()
+        self.assertEqual(rfq.title, "Earthworks")
+
+    def test_publishing_emails_eligible_vendors(self) -> None:
+        now = timezone.now()
+        start = (now + timedelta(days=10)).date()
+        project = Project.objects.create(
+            title="Published tender",
+            scope="Scope",
+            start_date=start,
+            end_date=start + timedelta(days=30),
+            closing_at=now + timedelta(days=3),
+            created_by=self.procurement,
+        )
+        RFQ.objects.create(project=project, code="RFQ-01", title="Piling")
+        client = staff_client(self.procurement)
+        with self.captureOnCommitCallbacks(execute=True):
+            response = client.post(reverse("tenders:project_publish", args=[project.pk]))
+        self.assertRedirects(response, reverse("tenders:tender_detail", args=[project.pk]))
+        project.refresh_from_db()
+        self.assertEqual(project.status, Project.Status.OPEN)
+        sent = [message for message in mail.outbox if self.vendor.email in message.to]
+        self.assertEqual(len(sent), 1)
+        self.assertIn("New tender available", sent[0].subject)
+
+    def test_closed_project_rejects_a_new_rfq(self) -> None:
+        project, _rfq = make_open_project(self.procurement, closes_in=timedelta(days=-1))
+        client = staff_client(self.procurement)
+        response = client.post(
+            reverse("tenders:rfq_add", args=[project.pk]),
+            {"title": "Too late"},
+        )
+        self.assertRedirects(response, reverse("tenders:tender_detail", args=[project.pk]))
+        self.assertFalse(project.rfqs.filter(title="Too late").exists())

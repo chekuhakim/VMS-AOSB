@@ -68,6 +68,11 @@ class Project(models.Model):
         return self.status == self.Status.DRAFT
 
     @property
+    def can_add_rfq(self) -> bool:
+        """New work packages are allowed in draft, and on an open project until closing."""
+        return self.is_editable or self.accepting_quotations
+
+    @property
     def display_status(self) -> str:
         """Lifecycle label: Draft → Open → Closed → Awarded, or Cancelled."""
         if self.status != self.Status.OPEN:
