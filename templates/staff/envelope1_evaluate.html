@@ -186,7 +186,7 @@
       <p class="text-sm text-slate-600">You have reached the end of this evaluation. Approve or reject this Envelope 1.</p>
       <form method="post" action="{% url 'staff:approval_decide' submission.pk %}" class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
         {% csrf_token %}
-        <input type="text" name="note" placeholder="Optional note — internal on approval, shared with vendor on rejection" class="flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand" />
+        <input type="text" name="note" placeholder="Optional internal note (not sent to vendor)" class="flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand" />
         <button type="submit" name="decision" value="approve" class="rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">Approve</button>
         <button type="submit" name="decision" value="reject" class="rounded-xl bg-rose-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-rose-700">Reject</button>
       </form>

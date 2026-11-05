@@ -452,11 +452,13 @@ def director_decide(
             level=Notification.Level.SUCCESS,
         )
     else:
+        # Director remarks are internal on rejection too — never include them in
+        # vendor-facing messages. The audit log keeps the full note.
         _notify_vendor(
             submission,
             topic="status",
             title="Envelope 1 not approved",
-            body=_with_note("The Director did not approve your Envelope 1.", note),
+            body="The Director did not approve your Envelope 1.",
             level=Notification.Level.DANGER,
         )
     return submission

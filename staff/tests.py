@@ -181,6 +181,18 @@ class EnvelopeSegregationOfDutiesTests(TestCase):
         self.assertIn("pre-qualified", note.body)
         self.assertNotIn("be careful with this vendor", note.body)
 
+    def test_director_rejection_note_stays_internal(self) -> None:
+        Envelope1Submission.objects.filter(pk=self.submission.pk).update(status=S.PENDING_DIRECTOR)
+        staff_client(self.director).post(
+            reverse("staff:approval_decide", args=[self.submission.pk]),
+            {"decision": "reject", "note": "internal legal concern"},
+        )
+        note = Notification.objects.get(
+            user=self.vendor, dedupe_key=f"e1-{self.submission.pk}-status"
+        )
+        self.assertIn("did not approve", note.body)
+        self.assertNotIn("internal legal concern", note.body)
+
     def test_director_cannot_reject_at_evaluation(self) -> None:
         Envelope1Submission.objects.filter(pk=self.submission.pk).update(status=S.IN_PROGRESS)
         staff_client(self.director).post(
