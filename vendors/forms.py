@@ -36,7 +36,8 @@ _FILE = {
 }
 _RADIO = {"class": "h-4 w-4 border-slate-300 text-brand focus:ring-brand"}
 
-MAX_PDF_BYTES = 10 * 1024 * 1024  # 10 MB
+MAX_PDF_BYTES = 100 * 1024 * 1024  # 100 MB
+MAX_PDF_MB = MAX_PDF_BYTES // (1024 * 1024)
 
 CIDB_GRADE_CHOICES = [
     ("", "Select CIDB grade"),
@@ -62,7 +63,7 @@ def validate_pdf_upload(uploaded) -> None:  # type: ignore[no-untyped-def]
     ):
         raise ValidationError("Only PDF files are allowed.")
     if uploaded.size > MAX_PDF_BYTES:
-        raise ValidationError("PDF must be 10 MB or smaller.")
+        raise ValidationError(f"PDF must be {MAX_PDF_MB} MB or smaller.")
     pos = uploaded.tell()
     header = uploaded.read(5)
     uploaded.seek(pos)
