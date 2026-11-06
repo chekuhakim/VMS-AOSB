@@ -47,7 +47,7 @@ def get_active_company(request: HttpRequest) -> Company | None:
         return None
 
     company = (
-        Company.objects.filter(pk=company_id, owner=request.user)
+        Company.objects.filter(pk=company_id, owner=request.user, is_hidden=False)
         .only("id", "name", "registration_status")
         .first()
     )
@@ -68,7 +68,11 @@ def ensure_active_company(request: HttpRequest) -> Company | None:
 
     from vendors.models import Company
 
-    first = Company.objects.filter(owner=request.user).order_by("name").first()
+    first = (
+        Company.objects.filter(owner=request.user, is_hidden=False)
+        .order_by("name")
+        .first()
+    )
     if first is not None:
         set_active_company_id(request, first.pk)
     return first

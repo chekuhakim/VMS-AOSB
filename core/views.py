@@ -30,7 +30,9 @@ def dashboard(request: HttpRequest) -> HttpResponse:
         company = ensure_active_company(request)
         if company is None:
             company = (
-                Company.objects.filter(owner=request.user).order_by("-updated_at").first()
+                Company.objects.filter(owner=request.user, is_hidden=False)
+                .order_by("-updated_at")
+                .first()
             )
 
     return render(

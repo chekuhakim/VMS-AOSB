@@ -267,7 +267,9 @@ def sync_vendor_notifications(user: AbstractBaseUser) -> None:
     the company has been submitted. Post-submit outcomes (rejected / approved /
     document expiry on a live registration) still notify.
     """
-    companies = list(Company.objects.filter(owner=user).order_by("name"))
+    companies = list(
+        Company.objects.filter(owner=user, is_hidden=False).order_by("name")
+    )
     today = timezone.localdate()
     active_keys: set[str] = set()
 

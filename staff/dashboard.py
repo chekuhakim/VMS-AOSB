@@ -71,7 +71,9 @@ class AuditItem:
 def build_stat_cards() -> dict[str, int]:
     today = timezone.localdate()
     month_start = today.replace(day=1)
-    approved = Company.objects.filter(registration_status=Company.RegistrationStatus.APPROVED)
+    approved = Company.objects.filter(
+        registration_status=Company.RegistrationStatus.APPROVED, is_hidden=False
+    )
     return {
         "vendors_total": approved.count(),
         "vendors_this_month": approved.filter(evaluated_at__date__gte=month_start).count(),
@@ -80,10 +82,12 @@ def build_stat_cards() -> dict[str, int]:
                 Envelope1Submission.Status.SUBMITTED,
                 Envelope1Submission.Status.PENDING_EVALUATION,
                 Envelope1Submission.Status.IN_PROGRESS,
-            ]
+            ],
+            company__is_hidden=False,
         ).count(),
         "pending_approval": Envelope1Submission.objects.filter(
-            status=Envelope1Submission.Status.PENDING_DIRECTOR
+            status=Envelope1Submission.Status.PENDING_DIRECTOR,
+            company__is_hidden=False,
         ).count(),
         "expiring_certificates": count_expiring_certificates(today),
     }
@@ -93,7 +97,9 @@ def count_expiring_certificates(today: date) -> int:
     """Certificates already expired or expiring within the window (compliance alert)."""
     limit = today + timedelta(days=EXPIRY_WINDOW_DAYS)
     total = 0
-    companies = Company.objects.exclude(registration_status=Company.RegistrationStatus.DRAFT)
+    companies = Company.objects.exclude(
+        registration_status=Company.RegistrationStatus.DRAFT
+    ).filter(is_hidden=False)
     for company in companies.only(
         "ssm_document_expiry",
         "cidb_certificate_expiry",
@@ -112,7 +118,10 @@ def count_expiring_certificates(today: date) -> int:
     # Only the latest version of each Envelope 1 document counts — older versions are superseded
     latest: dict[tuple[int, str], Envelope1Document] = {}
     for doc in (
-        Envelope1Document.objects.exclude(submission__status=Envelope1Submission.Status.DRAFT)
+        Envelope1Document.objects.exclude(
+            submission__status=Envelope1Submission.Status.DRAFT
+        )
+        .exclude(submission__company__is_hidden=True)
         .order_by("-version")
         .only("submission_id", "doc_type", "version", "expiry_date")
     ):
@@ -184,12 +193,14 @@ def build_recent_submissions(
         for sub in (
             Envelope1Submission.objects.select_related("company")
             .exclude(status=Envelope1Submission.Status.DRAFT)
+            .exclude(company__is_hidden=True)
             .order_by("-updated_at")[:limit]
         ):
             rows.append(_e1_row(sub, can_evaluate=can_evaluate, can_approve=can_approve))
     if stage in ("", "registration"):
         for company in (
             Company.objects.exclude(registration_status=Company.RegistrationStatus.DRAFT)
+            .filter(is_hidden=False)
             .order_by("-updated_at")[:limit]
         ):
             rows.append(_registration_row(company))
@@ -202,10 +213,14 @@ def build_pipeline() -> list[PipelineStage]:
     """Where each company currently sits; percent is its share of all companies in process."""
     S = Envelope1Submission.Status
     active_e1_company_ids = set(
-        Envelope1Submission.objects.exclude(status=S.DRAFT).values_list("company_id", flat=True)
+        Envelope1Submission.objects.exclude(status=S.DRAFT)
+        .exclude(company__is_hidden=True)
+        .values_list("company_id", flat=True)
     )
     initial = (
-        Company.objects.filter(registration_status=Company.RegistrationStatus.APPROVED)
+        Company.objects.filter(
+            registration_status=Company.RegistrationStatus.APPROVED, is_hidden=False
+        )
         .exclude(pk__in=active_e1_company_ids)
         .count()
     )
@@ -215,9 +230,12 @@ def build_pipeline() -> list[PipelineStage]:
             S.PENDING_EVALUATION,
             S.IN_PROGRESS,
             S.RETURNED_FOR_CORRECTION,
-        ]
+        ],
+        company__is_hidden=False,
     ).count()
-    director = Envelope1Submission.objects.filter(status=S.PENDING_DIRECTOR).count()
+    director = Envelope1Submission.objects.filter(
+        status=S.PENDING_DIRECTOR, company__is_hidden=False
+    ).count()
     total = initial + compliance + director
 
     def pct(n: int) -> int:

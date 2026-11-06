@@ -88,7 +88,11 @@ def audit_feed(request: HttpRequest) -> HttpResponse:
 def company_list(request: HttpRequest) -> HttpResponse:
     q = (request.GET.get("q") or "").strip()
     status = (request.GET.get("status") or "").strip()
-    qs = Company.objects.select_related("owner").order_by("-updated_at")
+    qs = (
+        Company.objects.filter(is_hidden=False)
+        .select_related("owner")
+        .order_by("-updated_at")
+    )
     if q:
         qs = qs.filter(
             Q(name__icontains=q)
@@ -164,6 +168,7 @@ def envelope1_list(request: HttpRequest) -> HttpResponse:
     qs = (
         Envelope1Submission.objects.select_related("company", "company__owner")
         .exclude(status=Envelope1Submission.Status.DRAFT)
+        .exclude(company__is_hidden=True)
         .order_by("-updated_at")
     )
     if q:
@@ -400,7 +405,7 @@ def view_envelope1_document(request: HttpRequest, pk: int) -> HttpResponse:
 def approval_queue(request: HttpRequest) -> HttpResponse:
     qs = (
         Envelope1Submission.objects.select_related("company")
-        .filter(status=Envelope1Submission.Status.PENDING_DIRECTOR)
+        .filter(status=Envelope1Submission.Status.PENDING_DIRECTOR, company__is_hidden=False)
         .order_by("updated_at")
     )
     return render(
@@ -446,6 +451,7 @@ def withdrawal_list(request: HttpRequest) -> HttpResponse:
         WithdrawalRequest.objects.select_related(
             "submission", "submission__company", "requested_by"
         )
+        .exclude(submission__company__is_hidden=True)
         .order_by("-created_at")
     )
     status = (request.GET.get("status") or "pending").strip()
@@ -523,7 +529,10 @@ def audit_log(request: HttpRequest) -> HttpResponse:
 def qualification_checklist_redirect(request: HttpRequest) -> HttpResponse:
     """Legacy nav target — send procurement to in-progress / pending Envelope 1 work."""
     submission = (
-        Envelope1Submission.objects.filter(status=Envelope1Submission.Status.IN_PROGRESS)
+        Envelope1Submission.objects.filter(
+            status=Envelope1Submission.Status.IN_PROGRESS,
+            company__is_hidden=False,
+        )
         .order_by("-updated_at")
         .first()
     )
@@ -533,7 +542,8 @@ def qualification_checklist_redirect(request: HttpRequest) -> HttpResponse:
                 status__in=[
                     Envelope1Submission.Status.PENDING_EVALUATION,
                     Envelope1Submission.Status.SUBMITTED,
-                ]
+                ],
+                company__is_hidden=False,
             )
             .order_by("-updated_at")
             .first()

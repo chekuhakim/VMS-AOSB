@@ -118,6 +118,9 @@ class Company(models.Model):
         default=RegistrationStatus.DRAFT,
         db_index=True,
     )
+    # Test / demo companies stay in the database for audit but are hidden from
+    # staff queues, dashboards, tender eligibility, and vendor company lists.
+    is_hidden = models.BooleanField(default=False, db_index=True)
     # Machine-readable reason codes from the rules engine
     evaluation_notes = models.JSONField(default=list, blank=True)
     evaluated_at = models.DateTimeField(null=True, blank=True)

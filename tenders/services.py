@@ -50,7 +50,7 @@ def requirement_issues(company: Company, project: Project) -> list[str]:
 
 def eligible_companies(project: Project) -> list[Company]:
     candidates = Company.objects.filter(
-        registration_status=Company.RegistrationStatus.APPROVED
+        registration_status=Company.RegistrationStatus.APPROVED, is_hidden=False
     ).select_related("owner")
     return [
         c for c in candidates
@@ -164,6 +164,7 @@ def cancel_project(
         bidders = Company.objects.filter(
             quotations__rfq__project=project,
             quotations__status=Quotation.Status.SUBMITTED,
+            is_hidden=False,
         ).distinct().select_related("owner")
         for company in bidders:
             upsert_notification(

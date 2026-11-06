@@ -38,7 +38,9 @@ def design_system(request) -> dict[str, Any]:  # type: ignore[no-untyped-def]
     companies: list[Company] = []
     active_company = None
     if vendor:
-        companies = list(Company.objects.filter(owner=request.user).order_by("name"))
+        companies = list(
+            Company.objects.filter(owner=request.user, is_hidden=False).order_by("name")
+        )
         active_company = ensure_active_company(request)
 
     return {

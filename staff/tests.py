@@ -58,6 +58,13 @@ class StaffPageAccessTests(TestCase):
             with self.subTest(page=name):
                 self.assertEqual(client.get(reverse(name)).status_code, 200)
 
+    def test_hidden_company_is_not_listed(self) -> None:
+        company = make_company(self.vendor)
+        company.is_hidden = True
+        company.save(update_fields=["is_hidden"])
+        page = staff_client(self.viewer).get(reverse("staff:company_list"))
+        self.assertNotContains(page, company.name)
+
     def test_vendor_cannot_open_staff_company_or_envelope_pages(self) -> None:
         company = make_company(self.vendor)
         submission = make_submission(company, S.PENDING_EVALUATION)

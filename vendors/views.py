@@ -89,7 +89,9 @@ def your_company(request: HttpRequest) -> HttpResponse:
     blocked = _vendor_gate(request)
     if blocked:
         return blocked
-    companies = Company.objects.filter(owner=request.user).order_by("-updated_at")
+    companies = Company.objects.filter(owner=request.user, is_hidden=False).order_by(
+        "-updated_at"
+    )
     return render(
         request,
         "vendors/your_company.html",
