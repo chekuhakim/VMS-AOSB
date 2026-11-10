@@ -29,7 +29,7 @@ from vendors.forms import (
     Step5LHDNForm,
     Step6DeclarationForm,
 )
-from vendors.models import Company, CompanyDocument
+from vendors.models import Company, CompanyDocument, VendorInvitation
 from vendors.rules import REASON_LABELS, evaluate_company_registration
 
 def company_ready_for_msa(company: Company) -> bool:
@@ -215,6 +215,92 @@ def download_company_msa(request: HttpRequest, pk: int) -> HttpResponse:
         object_id=company.pk,
     )
     return response
+
+
+@require_http_methods(["GET", "POST"])
+def accept_invitation(request: HttpRequest, token) -> HttpResponse:  # type: ignore[no-untyped-def]
+    """Public invitation link: authenticate, then create/link the vendor company."""
+    invitation = get_object_or_404(VendorInvitation, token=token)
+    accept_url = reverse("vendors:accept_invitation", args=[invitation.token])
+
+    if invitation.is_accepted:
+        messages.info(request, "This invitation has already been accepted.")
+        return redirect("account_login" if not request.user.is_authenticated else "core:dashboard")
+    if invitation.is_revoked:
+        messages.error(request, "This invitation has been revoked.")
+        return redirect("account_login")
+    if invitation.is_expired:
+        messages.error(request, "This invitation has expired. Ask Procurement to resend it.")
+        return redirect("account_login")
+
+    if not request.user.is_authenticated:
+        request.session["vendor_invite_token"] = str(invitation.token)
+        from django.contrib.auth import get_user_model
+
+        if get_user_model().objects.filter(email__iexact=invitation.email).exists():
+            return redirect(f"{reverse('account_login')}?next={accept_url}")
+        return redirect(
+            f"{reverse('account_signup')}?email={quote(invitation.email)}&next={accept_url}"
+        )
+
+    if (request.user.email or "").lower() != invitation.email.lower():
+        messages.error(
+            request,
+            f"This invitation is for {invitation.email}. Sign in with that email to continue.",
+        )
+        return redirect("core:dashboard")
+
+    if request.method == "POST":
+        with transaction.atomic():
+            invitation = VendorInvitation.objects.select_for_update().get(pk=invitation.pk)
+            if not invitation.is_pending:
+                messages.error(request, "This invitation is no longer available.")
+                return redirect("core:dashboard")
+            company = invitation.company
+            if company is None:
+                company = Company.objects.filter(
+                    owner=request.user, name__iexact=invitation.company_name
+                ).first()
+            if company is None:
+                company = Company.objects.create(
+                    owner=request.user,
+                    name=invitation.company_name,
+                    official_email=invitation.email,
+                    primary_contact_name=request.user.get_full_name()
+                    or request.user.get_username(),
+                    wizard_step=1,
+                    registration_status=Company.RegistrationStatus.DRAFT,
+                )
+            invitation.company = company
+            invitation.accepted_at = timezone.now()
+            invitation.accepted_by = request.user  # type: ignore[assignment]
+            invitation.save(update_fields=["company", "accepted_at", "accepted_by"])
+            set_active_company_id(request, company.pk)
+            request.session.pop("vendor_invite_token", None)
+            write_audit(
+                category=AuditLog.Category.COMPANY,
+                action="vendor_invitation_accepted",
+                actor=request.user,
+                request=request,
+                changes={
+                    "company_name": company.name,
+                    "email": invitation.email,
+                },
+                object_type="VendorInvitation",
+                object_id=invitation.pk,
+            )
+        messages.success(request, "Invitation accepted. Complete your company registration.")
+        return redirect("vendors:wizard_step", pk=company.pk, step=1)
+
+    return render(
+        request,
+        "vendors/accept_invitation.html",
+        {
+            "page_title": "Accept invitation",
+            "invitation": invitation,
+            "company": invitation.company,
+        },
+    )
 
 
 @login_required

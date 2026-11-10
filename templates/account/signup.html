@@ -69,7 +69,7 @@
                   type="email"
                   name="email"
                   id="id_email"
-                  value="{{ form.email.value|default:'' }}"
+                  value="{{ form.email.value|default:request.GET.email|default:'' }}"
                   required
                   autocomplete="email"
                   placeholder="Enter your company email"

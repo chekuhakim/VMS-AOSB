@@ -5,13 +5,64 @@ from __future__ import annotations
 from typing import Any
 
 from django import forms
+from django.contrib.auth import get_user_model
+from django.utils import timezone
 
+from accounts.roles import is_staff_user
 from staff.models import Envelope1ItemEvaluation
+from vendors.models import VendorInvitation
 
 _RESULT_CHOICES = [
     (Envelope1ItemEvaluation.Result.PASS, "Pass"),
     (Envelope1ItemEvaluation.Result.FAIL, "Fail"),
 ]
+
+
+class VendorInvitationForm(forms.Form):
+    company_name = forms.CharField(
+        max_length=255,
+        label="Company name",
+        widget=forms.TextInput(
+            attrs={
+                "class": "mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+            }
+        ),
+    )
+    email = forms.EmailField(
+        label="Vendor email",
+        widget=forms.EmailInput(
+            attrs={
+                "class": "mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+            }
+        ),
+    )
+    note = forms.CharField(
+        required=False,
+        max_length=500,
+        label="Optional note",
+        widget=forms.Textarea(
+            attrs={
+                "rows": 2,
+                "class": "mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand",
+            }
+        ),
+    )
+
+    def clean_email(self) -> str:
+        email = (self.cleaned_data.get("email") or "").strip().lower()
+        user = get_user_model().objects.filter(email__iexact=email).first()
+        if user is not None and is_staff_user(user):
+            raise forms.ValidationError("This email belongs to a staff account.")
+        company_name = (self.data.get("company_name") or "").strip()
+        if VendorInvitation.objects.filter(
+            email__iexact=email,
+            company_name__iexact=company_name,
+            accepted_at__isnull=True,
+            revoked_at__isnull=True,
+            expires_at__gt=timezone.now(),
+        ).exists():
+            raise forms.ValidationError("A pending invitation already exists for this company and email.")
+        return email
 
 
 class EvaluationStepForm(forms.Form):

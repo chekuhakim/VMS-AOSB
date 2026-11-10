@@ -1,0 +1,10 @@
+Hello,
+
+{{ invitation.invited_by.get_full_name|default:invitation.invited_by.get_username }} from {{ brand_name }} has invited {{ invitation.company_name }} to register as a vendor.
+
+Complete your account and company registration here:
+{{ invite_url }}
+
+This invitation expires on {{ invitation.expires_at|date:"d M Y, g:i A" }}.
+
+If you were not expecting this invitation, you can ignore this email.

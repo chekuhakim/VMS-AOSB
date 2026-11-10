@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import mimetypes
+from datetime import timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -11,9 +12,11 @@ from django.db import transaction
 from django.db.models import Q
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from audit.models import AuditLog
+from audit.services import write_audit
 from documents.storage import open_stored
 from envelope1.checklist import STEP_META
 from envelope1.models import Envelope1Document, Envelope1Submission, WithdrawalRequest
@@ -32,7 +35,7 @@ from staff.dashboard import (
     build_stat_cards,
 )
 from staff.eval_ui import ICONS, build_stepper, read_only_fields
-from staff.forms import EvaluationStepForm
+from staff.forms import EvaluationStepForm, VendorInvitationForm
 from staff.services import (
     director_decide,
     evaluation_progress,
@@ -47,7 +50,8 @@ from staff.services import (
     step_statuses,
 )
 from tenders.services import pending_awards
-from vendors.models import Company, CompanyDocument
+from vendors.invitations import send_vendor_invitation
+from vendors.models import Company, CompanyDocument, VendorInvitation
 from vendors.rules import REASON_LABELS
 
 
@@ -83,6 +87,105 @@ def audit_feed(request: HttpRequest) -> HttpResponse:
         "staff/components/audit_feed.html",
         {"audit_feed": build_audit_feed()},
     )
+
+
+INVITATION_VALID_DAYS = 7
+
+
+@login_required
+@procurement_required
+def vendor_invitations(request: HttpRequest) -> HttpResponse:
+    """Procurement / System Admin invites vendors to register."""
+    form = VendorInvitationForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            invitation = VendorInvitation.objects.create(
+                company_name=form.cleaned_data["company_name"].strip(),
+                email=form.cleaned_data["email"],
+                note=form.cleaned_data.get("note", "").strip(),
+                invited_by=request.user,
+                expires_at=timezone.now() + timedelta(days=INVITATION_VALID_DAYS),
+            )
+            send_vendor_invitation(invitation)
+            write_audit(
+                category=AuditLog.Category.COMPANY,
+                action="vendor_invitation_sent",
+                actor=request.user,
+                request=request,
+                changes={
+                    "company_name": invitation.company_name,
+                    "email": invitation.email,
+                },
+                object_type="VendorInvitation",
+                object_id=invitation.pk,
+            )
+        messages.success(request, f"Invitation sent to {invitation.email}.")
+        return redirect("staff:vendor_invitations")
+
+    invitations = (
+        VendorInvitation.objects.select_related(
+            "invited_by", "company", "accepted_by"
+        )
+        .order_by("-created_at")[:100]
+    )
+    return render(
+        request,
+        "staff/vendor_invitations.html",
+        {
+            "page_title": "Vendor invitations",
+            "form": form,
+            "invitations": invitations,
+            "valid_days": INVITATION_VALID_DAYS,
+        },
+    )
+
+
+@login_required
+@procurement_required
+@require_POST
+def vendor_invitation_revoke(request: HttpRequest, pk: int) -> HttpResponse:
+    invitation = get_object_or_404(VendorInvitation, pk=pk)
+    if invitation.is_accepted:
+        messages.error(request, "This invitation was already accepted.")
+        return redirect("staff:vendor_invitations")
+    if not invitation.is_revoked:
+        invitation.revoked_at = timezone.now()
+        invitation.save(update_fields=["revoked_at"])
+        write_audit(
+            category=AuditLog.Category.COMPANY,
+            action="vendor_invitation_revoked",
+            actor=request.user,
+            request=request,
+            changes={"email": invitation.email},
+            object_type="VendorInvitation",
+            object_id=invitation.pk,
+        )
+        messages.success(request, "Invitation revoked.")
+    return redirect("staff:vendor_invitations")
+
+
+@login_required
+@procurement_required
+@require_POST
+def vendor_invitation_resend(request: HttpRequest, pk: int) -> HttpResponse:
+    invitation = get_object_or_404(VendorInvitation, pk=pk)
+    if invitation.is_accepted or invitation.is_revoked:
+        messages.error(request, "Only pending or expired invitations can be resent.")
+        return redirect("staff:vendor_invitations")
+    invitation.expires_at = timezone.now() + timedelta(days=INVITATION_VALID_DAYS)
+    invitation.save(update_fields=["expires_at"])
+    send_vendor_invitation(invitation)
+    write_audit(
+        category=AuditLog.Category.COMPANY,
+        action="vendor_invitation_resent",
+        actor=request.user,
+        request=request,
+        changes={"email": invitation.email},
+        object_type="VendorInvitation",
+        object_id=invitation.pk,
+    )
+    messages.success(request, f"Invitation resent to {invitation.email}.")
+    return redirect("staff:vendor_invitations")
 
 
 @login_required

@@ -5,7 +5,13 @@ from __future__ import annotations
 from typing import Any
 
 from accounts.company_context import ensure_active_company
-from accounts.roles import is_staff_user, is_vendor_user
+from accounts.roles import (
+    PROCUREMENT,
+    SYSTEM_ADMIN,
+    is_staff_user,
+    is_vendor_user,
+    user_in_group,
+)
 from vendors.models import Company
 
 
@@ -24,6 +30,17 @@ def design_system(request) -> dict[str, Any]:  # type: ignore[no-untyped-def]
             {"label": "Audit log", "url_name": "staff:audit_log", "icon": "list"},
             {"label": "Tender", "url_name": "tenders:tender_list", "icon": "briefcase"},
         ]
+        if request.user.is_superuser or user_in_group(
+            request.user, PROCUREMENT
+        ) or user_in_group(request.user, SYSTEM_ADMIN):
+            nav_items.insert(
+                2,
+                {
+                    "label": "Invitations",
+                    "url_name": "staff:vendor_invitations",
+                    "icon": "mail",
+                },
+            )
     else:
         nav_items = [
             {"label": "Dashboard", "url_name": "core:dashboard", "icon": "home"},

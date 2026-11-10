@@ -21,6 +21,10 @@ NOISY_AUDIT_PREFIXES: tuple[str, ...] = ("wizard_step_", "envelope1_step_")
 AUDIT_TITLES: dict[str, str] = {
     "vendor_registered": "New vendor account registered",
     "vendor_registered_social": "New vendor account (Google)",
+    "vendor_invitation_sent": "Vendor invitation sent",
+    "vendor_invitation_resent": "Vendor invitation resent",
+    "vendor_invitation_revoked": "Vendor invitation revoked",
+    "vendor_invitation_accepted": "Vendor invitation accepted",
     "company_draft_created": "Company registration started",
     "company_sample_created": "Sample company created",
     "company_deleted": "Company deleted",

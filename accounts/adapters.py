@@ -5,6 +5,7 @@ from __future__ import annotations
 from allauth.account.adapter import DefaultAccountAdapter
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from django.http import HttpRequest
+from django.urls import reverse
 
 from accounts.roles import is_staff_user
 from audit.models import AuditLog
@@ -14,7 +15,19 @@ from audit.services import write_audit
 class VMSAccountAdapter(DefaultAccountAdapter):
     """Vendor self-signup + role-aware redirects after login."""
 
+    def _invitation_redirect(self, request: HttpRequest) -> str | None:
+        token = request.session.get("vendor_invite_token")
+        if not token:
+            return None
+        try:
+            return reverse("vendors:accept_invitation", args=[token])
+        except Exception:
+            return None
+
     def get_login_redirect_url(self, request: HttpRequest) -> str:
+        invite = self._invitation_redirect(request)
+        if invite:
+            return invite
         if is_staff_user(request.user):
             return "/admin-dashboard/"
         return "/"

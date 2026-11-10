@@ -12,8 +12,8 @@ from django.utils import timezone
 
 from accounts.models import Notification
 from accounts.roles import DIRECTOR, PROCUREMENT
-from core.testing import make_company, make_user, pdf, vendor_client
-from vendors.models import Company, CompanyDocument
+from core.testing import make_company, make_user, pdf, staff_client, vendor_client
+from vendors.models import Company, CompanyDocument, VendorInvitation
 from vendors.rules import evaluate_company_registration
 
 
@@ -107,6 +107,89 @@ class RegistrationUploadKeptTests(TestCase):
         self.assertNotIn("incomplete_cidb", result.reason_codes)
         self.assertNotIn("missing_cidb_document", result.reason_codes)
         self.assertTrue(result.approved)
+
+
+class VendorInvitationTests(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.procurement = make_user("invite-procurement", PROCUREMENT)
+        cls.director = make_user("invite-director", DIRECTOR)
+
+    def _invite(self, **overrides):
+        data = {
+            "company_name": "Invited Vendor Sdn Bhd",
+            "email": "invited@example.com",
+            "note": "Please register",
+        }
+        data.update(overrides)
+        return staff_client(self.procurement).post(
+            reverse("staff:vendor_invitations"), data
+        )
+
+    def test_procurement_can_send_invitation(self) -> None:
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self._invite()
+        self.assertRedirects(response, reverse("staff:vendor_invitations"))
+        invitation = VendorInvitation.objects.get(email="invited@example.com")
+        self.assertEqual(invitation.company_name, "Invited Vendor Sdn Bhd")
+        self.assertTrue(invitation.is_pending)
+        self.assertEqual([m.to for m in mail.outbox], [["invited@example.com"]])
+        self.assertIn("invite", mail.outbox[0].body)
+
+    def test_director_cannot_send_invitation(self) -> None:
+        response = staff_client(self.director).post(
+            reverse("staff:vendor_invitations"),
+            {"company_name": "No Invite Sdn Bhd", "email": "no@example.com"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(VendorInvitation.objects.filter(email="no@example.com").exists())
+
+    def test_staff_email_cannot_be_invited(self) -> None:
+        response = self._invite(email=self.procurement.email)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "belongs to a staff account")
+        self.assertFalse(
+            VendorInvitation.objects.filter(email=self.procurement.email).exists()
+        )
+
+    def test_invite_link_starts_signup_for_new_email(self) -> None:
+        invitation = VendorInvitation.objects.create(
+            company_name="New Vendor Sdn Bhd",
+            email="newvendor@example.com",
+            invited_by=self.procurement,
+            expires_at=timezone.now() + timedelta(days=7),
+        )
+        response = self.client.get(
+            reverse("vendors:accept_invitation", args=[invitation.token])
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/register/", response["Location"])
+        self.assertIn("email=newvendor%40example.com", response["Location"])
+
+    def test_accepting_invitation_creates_company(self) -> None:
+        vendor = make_user("invited-vendor")
+        vendor.email = "accept@example.com"
+        vendor.save(update_fields=["email"])
+        invitation = VendorInvitation.objects.create(
+            company_name="Accepted Vendor Sdn Bhd",
+            email=vendor.email,
+            invited_by=self.procurement,
+            expires_at=timezone.now() + timedelta(days=7),
+        )
+        client = vendor_client(vendor)
+        page = client.get(reverse("vendors:accept_invitation", args=[invitation.token]))
+        self.assertEqual(page.status_code, 200)
+        response = client.post(
+            reverse("vendors:accept_invitation", args=[invitation.token])
+        )
+        company = Company.objects.get(owner=vendor, name="Accepted Vendor Sdn Bhd")
+        self.assertRedirects(
+            response, reverse("vendors:wizard_step", args=[company.pk, 1])
+        )
+        invitation.refresh_from_db()
+        self.assertTrue(invitation.is_accepted)
+        self.assertEqual(invitation.company, company)
+        self.assertEqual(company.registration_status, Company.RegistrationStatus.DRAFT)
 
 
 class RegistrationMsaAndIcTests(TestCase):

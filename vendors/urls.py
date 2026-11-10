@@ -7,6 +7,7 @@ from . import views
 app_name = "vendors"
 
 urlpatterns = [
+    path("invite/<uuid:token>/", views.accept_invitation, name="accept_invitation"),
     path("your-company/", views.your_company, name="your_company"),
     path("your-company/<int:pk>/", views.company_detail, name="company_detail"),
     path(

@@ -8,6 +8,17 @@ app_name = "staff"
 
 urlpatterns = [
     path("admin-dashboard/", views.admin_dashboard, name="admin_dashboard"),
+    path("vendor-invitations/", views.vendor_invitations, name="vendor_invitations"),
+    path(
+        "vendor-invitations/<int:pk>/revoke/",
+        views.vendor_invitation_revoke,
+        name="vendor_invitation_revoke",
+    ),
+    path(
+        "vendor-invitations/<int:pk>/resend/",
+        views.vendor_invitation_resend,
+        name="vendor_invitation_resend",
+    ),
     path("admin-dashboard/audit-feed/", views.audit_feed, name="audit_feed"),
     path("registered-company/", views.company_list, name="company_list"),
     path(

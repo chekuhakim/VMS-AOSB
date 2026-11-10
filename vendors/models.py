@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import uuid
 
 from django.conf import settings
 from django.db import models
@@ -167,6 +168,76 @@ class Company(models.Model):
         if self.bank_name == self.Bank.OTHER:
             return self.bank_name_other
         return self.get_bank_name_display() if self.bank_name else ""
+
+
+class VendorInvitation(models.Model):
+    """Staff-issued invitation for a vendor to create an account and register."""
+
+    company_name = models.CharField(max_length=255)
+    email = models.EmailField(db_index=True)
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="vendor_invitations_sent",
+    )
+    note = models.TextField(blank=True)
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="invitations",
+    )
+    accepted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="vendor_invitations_accepted",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(db_index=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "vendor invitation"
+        verbose_name_plural = "vendor invitations"
+
+    def __str__(self) -> str:
+        return f"{self.company_name} · {self.email}"
+
+    @property
+    def is_accepted(self) -> bool:
+        return self.accepted_at is not None
+
+    @property
+    def is_revoked(self) -> bool:
+        return self.revoked_at is not None
+
+    @property
+    def is_expired(self) -> bool:
+        from django.utils import timezone
+
+        return not self.is_accepted and not self.is_revoked and timezone.now() >= self.expires_at
+
+    @property
+    def is_pending(self) -> bool:
+        return not self.is_accepted and not self.is_revoked and not self.is_expired
+
+    @property
+    def status_label(self) -> str:
+        if self.is_accepted:
+            return "Accepted"
+        if self.is_revoked:
+            return "Revoked"
+        if self.is_expired:
+            return "Expired"
+        return "Pending"
 
 
 class CompanyDocument(models.Model):
