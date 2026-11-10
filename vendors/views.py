@@ -32,6 +32,55 @@ from vendors.forms import (
 from vendors.models import Company, CompanyDocument
 from vendors.rules import REASON_LABELS, evaluate_company_registration
 
+def company_ready_for_msa(company: Company) -> bool:
+    """All registration data needed for a complete MSA has been filled in."""
+    required_text = (
+        company.name,
+        company.primary_contact_name,
+        company.contact_number,
+        company.official_email,
+        company.principal_address,
+        company.msa_signatory_name,
+        company.msa_signatory_designation,
+        company.ssm_registration_number,
+        company.lhdn_tin,
+        company.bank_name,
+        company.bank_account_number,
+        company.bank_account_name,
+    )
+    if any(not (value or "").strip() for value in required_text):
+        return False
+    if company.date_of_incorporation is None:
+        return False
+    docs = set(company.documents.values_list("doc_type", flat=True))
+    if CompanyDocument.DocType.SSM not in docs:
+        return False
+    if company.is_enterprise:
+        if company.ssm_document_expiry is None:
+            return False
+        if CompanyDocument.DocType.IC not in docs:
+            return False
+    if company.no_cidb_registration:
+        pass
+    elif not (
+        company.cidb_registration_number
+        and company.cidb_grade
+        and company.cidb_certificate_expiry
+        and CompanyDocument.DocType.CIDB in docs
+    ):
+        return False
+    if company.includes_electrical_work is None:
+        return False
+    if company.includes_electrical_work:
+        if not (
+            company.st_license_number
+            and company.st_certificate_expiry
+            and CompanyDocument.DocType.ST in docs
+        ):
+            return False
+    return True
+
+
 STEP_META = {
     1: {
         "title": "Company Profile Info",
@@ -146,6 +195,12 @@ def download_company_msa(request: HttpRequest, pk: int) -> HttpResponse:
     if blocked:
         return blocked
     company = _owned_company(request, pk)
+    if not company_ready_for_msa(company):
+        messages.error(
+            request,
+            "Complete every registration field and upload the required documents before downloading the MSA.",
+        )
+        return redirect("vendors:wizard_step", pk=company.pk, step=6)
     data = build_draft_msa_pdf(company)
     filename = msa_download_filename(company)
     response = HttpResponse(data, content_type="application/pdf")
@@ -339,6 +394,7 @@ def wizard_step(request: HttpRequest, pk: int, step: int) -> HttpResponse:
                 "ic": has_pdf[CompanyDocument.DocType.IC],
                 "signed_msa": has_pdf[CompanyDocument.DocType.SIGNED_MSA],
             },
+            "msa_ready": company_ready_for_msa(company) if step == 6 else False,
             "declaration_text": DECLARATION_TEXT if step == 6 else "",
             "declaration_version": DECLARATION_VERSION if step == 6 else "",
         },
@@ -353,7 +409,7 @@ def _keep_registration_upload(request: HttpRequest, company: Company, step: int,
     """
     cleaned = form.cleaned_data
     saved = False
-    if step == 1 and cleaned.get("signed_msa_pdf") and "signed_msa_pdf" not in form.errors:
+    if step == 6 and cleaned.get("signed_msa_pdf") and "signed_msa_pdf" not in form.errors:
         save_company_pdf(
             company=company,
             doc_type=CompanyDocument.DocType.SIGNED_MSA,
@@ -413,7 +469,7 @@ def _keep_registration_upload(request: HttpRequest, company: Company, step: int,
 
 
 def _maybe_store_pdfs(request: HttpRequest, company: Company, step: int, form) -> None:  # type: ignore[no-untyped-def]
-    if step == 1 and form.cleaned_data.get("signed_msa_pdf"):
+    if step == 6 and form.cleaned_data.get("signed_msa_pdf"):
         save_company_pdf(
             company=company,
             doc_type=CompanyDocument.DocType.SIGNED_MSA,

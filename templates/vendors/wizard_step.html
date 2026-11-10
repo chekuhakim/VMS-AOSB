@@ -35,24 +35,15 @@
 
       {% if step == 1 %}
         <div class="mb-5 rounded-xl border border-brand/20 bg-brand-50/40 px-4 py-3 text-sm text-slate-700">
-          <a href="{% url 'vendors:draft_msa' company.pk %}" class="font-semibold text-brand hover:text-brand-700">
-            Download draft Master Service Agreement (PDF)
-          </a>
-          <span class="text-slate-500"> — generated from the basic-info and MSA party details below.</span>
-          <p class="mt-1 text-xs text-slate-500">
-            If the SSM number is still blank, save this step, complete SSM E-info, then return here to download and upload the signed MSA.
-          </p>
+          The draft Master Service Agreement becomes available in the final step, after all company details and documents are complete.
         </div>
         <div class="grid gap-5 sm:grid-cols-2">
           {% for field in form %}
-            <div class="{% if field.name == 'principal_address' or field.name == 'signed_msa_pdf' %}sm:col-span-2{% endif %}">
+            <div class="{% if field.name == 'principal_address' %}sm:col-span-2{% endif %}">
               <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-slate-700">
                 {{ field.label }}
               </label>
               {{ field }}
-              {% if field.name == 'signed_msa_pdf' and has_pdf.signed_msa %}
-                <p class="mt-1 text-xs text-emerald-700">Signed MSA already on file — upload again only for a new version.</p>
-              {% endif %}
               {% if field.errors %}<p class="mt-1 text-xs text-rose-600">{{ field.errors.0 }}</p>{% endif %}
             </div>
           {% endfor %}
@@ -320,6 +311,37 @@
                 </div>
               </div>
             </dl>
+          </section>
+
+          <section class="rounded-2xl border border-slate-200 bg-white px-5 py-4">
+            <h3 class="text-sm font-semibold text-slate-900">Master Service Agreement</h3>
+            {% if msa_ready %}
+              <p class="mt-1 text-xs text-slate-500">
+                All registration details are complete. Download the draft, sign it, then upload the signed PDF.
+              </p>
+              <div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <a href="{% url 'vendors:draft_msa' company.pk %}"
+                   class="inline-flex items-center justify-center rounded-xl border border-brand/30 bg-white px-4 py-2.5 text-sm font-semibold text-brand shadow-sm hover:bg-brand-50">
+                  Download draft MSA
+                </a>
+                <div class="min-w-0 flex-1">
+                  <label for="{{ form.signed_msa_pdf.id_for_label }}" class="block text-xs font-medium text-slate-600">
+                    {{ form.signed_msa_pdf.label }}
+                  </label>
+                  {{ form.signed_msa_pdf }}
+                  {% if has_pdf.signed_msa %}
+                    <p class="mt-1 text-xs text-emerald-700">Signed MSA already on file — upload again only for a new version.</p>
+                  {% endif %}
+                  {% if form.signed_msa_pdf.errors %}
+                    <p class="mt-1 text-xs text-rose-600">{{ form.signed_msa_pdf.errors.0 }}</p>
+                  {% endif %}
+                </div>
+              </div>
+            {% else %}
+              <p class="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                Complete every registration field and upload all required documents in the previous steps before downloading the MSA.
+              </p>
+            {% endif %}
           </section>
 
           <section class="rounded-2xl border border-brand/20 bg-brand-50/40 px-5 py-4">

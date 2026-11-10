@@ -114,28 +114,31 @@ class RegistrationMsaAndIcTests(TestCase):
         owner = make_user(name)
         return make_company(owner, status=Company.RegistrationStatus.DRAFT)
 
-    def test_signed_msa_can_be_uploaded_with_basic_info(self) -> None:
+    def test_signed_msa_is_uploaded_in_the_final_step(self) -> None:
         company = self._company("msa-upload")
         company.documents.filter(doc_type=CompanyDocument.DocType.SIGNED_MSA).delete()
         response = vendor_client(company.owner, company).post(
-            reverse("vendors:wizard_step", args=[company.pk, 1]),
-            {
-                "name": company.name,
-                "primary_contact_name": "Abu bin Bakar",
-                "contact_number": "0123456789",
-                "official_email": "abu@example.com",
-                "principal_address": "Lot 1, Kota Kinabalu",
-                "msa_signatory_name": "Abu bin Bakar",
-                "msa_signatory_designation": "Director",
-                "signed_msa_pdf": pdf("signed-msa.pdf"),
-            },
+            reverse("vendors:wizard_step", args=[company.pk, 6]),
+            {"signed_msa_pdf": pdf("signed-msa.pdf")},
         )
-        self.assertRedirects(response, reverse("vendors:wizard_step", args=[company.pk, 2]))
+        self.assertEqual(response.status_code, 200)
         self.assertTrue(
             company.documents.filter(
                 doc_type=CompanyDocument.DocType.SIGNED_MSA,
                 original_filename="signed-msa.pdf",
             ).exists()
+        )
+
+    def test_msa_download_is_blocked_until_all_fields_are_complete(self) -> None:
+        company = self._company("msa-incomplete")
+        Company.objects.filter(pk=company.pk).update(principal_address="")
+        response = vendor_client(company.owner, company).get(
+            reverse("vendors:draft_msa", args=[company.pk])
+        )
+        self.assertRedirects(
+            response,
+            reverse("vendors:wizard_step", args=[company.pk, 6]),
+            fetch_redirect_response=False,
         )
 
     def test_enterprise_requires_ic_and_accepts_image(self) -> None:

@@ -129,12 +129,6 @@ def _require_future_or_today(field: forms.Field) -> None:
 
 
 class Step1ProfileForm(forms.ModelForm):
-    signed_msa_pdf = forms.FileField(
-        required=False,
-        label="Signed Master Service Agreement (PDF)",
-        widget=forms.ClearableFileInput(attrs=_FILE),
-    )
-
     class Meta:
         model = Company
         fields = (
@@ -175,16 +169,9 @@ class Step1ProfileForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs) -> None:  # type: ignore[no-untyped-def]
         super().__init__(*args, **kwargs)
-        for name, field in self.fields.items():
-            if name != "signed_msa_pdf":
-                field.required = True
+        for field in self.fields.values():
+            field.required = True
         _mark_required_labels(self)
-
-    def clean_signed_msa_pdf(self):
-        pdf = self.cleaned_data.get("signed_msa_pdf")
-        if pdf:
-            validate_pdf_upload(pdf)
-        return pdf
 
 
 class Step2SSMForm(forms.ModelForm):
@@ -507,6 +494,11 @@ class Step5LHDNForm(forms.ModelForm):
 
 
 class Step6DeclarationForm(forms.ModelForm):
+    signed_msa_pdf = forms.FileField(
+        required=False,
+        label="Signed Master Service Agreement (PDF)",
+        widget=forms.ClearableFileInput(attrs=_FILE),
+    )
     declaration_accepted = forms.BooleanField(
         required=True,
         label="I agree to the declaration above",
@@ -521,3 +513,9 @@ class Step6DeclarationForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.declaration_text = DECLARATION_TEXT
         self.declaration_version = DECLARATION_VERSION
+
+    def clean_signed_msa_pdf(self):
+        pdf = self.cleaned_data.get("signed_msa_pdf")
+        if pdf:
+            validate_pdf_upload(pdf)
+        return pdf
