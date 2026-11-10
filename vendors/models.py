@@ -73,6 +73,10 @@ class Company(models.Model):
     primary_contact_name = models.CharField(max_length=150, blank=True)
     contact_number = models.CharField(max_length=40, blank=True)
     official_email = models.EmailField(blank=True)
+    principal_address = models.TextField(blank=True)
+    # MSA party details used to generate the agreement during registration.
+    msa_signatory_name = models.CharField(max_length=150, blank=True)
+    msa_signatory_designation = models.CharField(max_length=150, blank=True)
 
     # --- Step 2: SSM E-info ---
     ssm_registration_number = models.CharField(max_length=50, blank=True)
@@ -172,6 +176,8 @@ class CompanyDocument(models.Model):
         SSM = "ssm", "SSM statutory forms"
         CIDB = "cidb", "CIDB certificate"
         ST = "st", "ST license certificate"
+        IC = "ic", "Identity card (IC)"
+        SIGNED_MSA = "signed_msa", "Signed Master Service Agreement"
 
     company = models.ForeignKey(
         Company,

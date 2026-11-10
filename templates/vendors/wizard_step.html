@@ -34,13 +34,25 @@
       {% endif %}
 
       {% if step == 1 %}
+        <div class="mb-5 rounded-xl border border-brand/20 bg-brand-50/40 px-4 py-3 text-sm text-slate-700">
+          <a href="{% url 'vendors:draft_msa' company.pk %}" class="font-semibold text-brand hover:text-brand-700">
+            Download draft Master Service Agreement (PDF)
+          </a>
+          <span class="text-slate-500"> — generated from the basic-info and MSA party details below.</span>
+          <p class="mt-1 text-xs text-slate-500">
+            If the SSM number is still blank, save this step, complete SSM E-info, then return here to download and upload the signed MSA.
+          </p>
+        </div>
         <div class="grid gap-5 sm:grid-cols-2">
           {% for field in form %}
-            <div>
+            <div class="{% if field.name == 'principal_address' or field.name == 'signed_msa_pdf' %}sm:col-span-2{% endif %}">
               <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-slate-700">
                 {{ field.label }}
               </label>
               {{ field }}
+              {% if field.name == 'signed_msa_pdf' and has_pdf.signed_msa %}
+                <p class="mt-1 text-xs text-emerald-700">Signed MSA already on file — upload again only for a new version.</p>
+              {% endif %}
               {% if field.errors %}<p class="mt-1 text-xs text-rose-600">{{ field.errors.0 }}</p>{% endif %}
             </div>
           {% endfor %}
@@ -84,6 +96,22 @@
             {{ form.ssm_document_expiry }}
             {% if form.ssm_document_expiry.errors %}
               <p class="mt-1 text-xs text-rose-600">{{ form.ssm_document_expiry.errors.0 }}</p>
+            {% endif %}
+          </div>
+
+          <div id="ic-upload-wrap" class="{% if not form.is_enterprise.value %}hidden{% endif %}">
+            <label for="{{ form.ic_pdf.id_for_label }}" class="block text-sm font-medium text-slate-700">
+              {{ form.ic_pdf.label }}
+            </label>
+            {{ form.ic_pdf }}
+            <p class="mt-1 text-xs text-slate-500">
+              Required because this company is not a Sdn Bhd. Upload the owner's IC as PDF, JPG, or PNG.
+            </p>
+            {% if has_pdf.ic %}
+              <p class="mt-1 text-xs text-emerald-700">IC already on file — upload again only for a new version.</p>
+            {% endif %}
+            {% if form.ic_pdf.errors %}
+              <p class="mt-1 text-xs text-rose-600">{{ form.ic_pdf.errors.0 }}</p>
             {% endif %}
           </div>
 
@@ -396,11 +424,16 @@
       var enterprise = document.getElementById('id_is_enterprise')
       var expiryWrap = document.getElementById('ssm-expiry-wrap')
       var expiryInput = document.getElementById('id_ssm_document_expiry')
+      var icWrap = document.getElementById('ic-upload-wrap')
+      var icInput = document.getElementById('id_ic_pdf')
+      var icOnFile = {{ has_pdf.ic|yesno:"true,false" }}
       if (enterprise && expiryWrap) {
         function syncExpiry() {
           var on = enterprise.checked
           expiryWrap.classList.toggle('hidden', !on)
+          if (icWrap) icWrap.classList.toggle('hidden', !on)
           setRequired(expiryInput, on)
+          setRequired(icInput, on && !icOnFile)
           if (!on && expiryInput) expiryInput.value = ''
         }
         enterprise.addEventListener('change', syncExpiry)

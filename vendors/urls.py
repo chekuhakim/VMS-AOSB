@@ -14,6 +14,11 @@ urlpatterns = [
         views.delete_company,
         name="delete_company",
     ),
+    path(
+        "your-company/<int:pk>/draft-msa/",
+        views.download_company_msa,
+        name="draft_msa",
+    ),
     path("register-company/", views.register_company, name="register_company"),
     path(
         "register-company/<int:pk>/step/<int:step>/",

@@ -49,7 +49,7 @@ class VendorIsolationTests(TestCase):
 
     def test_other_vendor_cannot_post_to_wizard(self) -> None:
         self.bob_client.post(
-            reverse("envelope1:wizard", args=[self.alice_sub.pk, 5]), {"site_supervisor_name": "Hijack"}
+            reverse("envelope1:wizard", args=[self.alice_sub.pk, 3]), {"site_supervisor_name": "Hijack"}
         )
         self.alice_sub.refresh_from_db()
         self.assertNotEqual(self.alice_sub.site_supervisor_name, "Hijack")
@@ -60,8 +60,8 @@ class VendorIsolationTests(TestCase):
         self.assertEqual(vendor_client(self.alice, self.alice_co).get(url).status_code, 200)
 
     def test_other_vendor_cannot_download_draft_msa_or_reopen(self) -> None:
-        response = self.bob_client.get(reverse("envelope1:draft_msa", args=[self.alice_sub.pk]))
-        self.assertRedirects(response, reverse("envelope1:home"), fetch_redirect_response=False)
+        response = self.bob_client.get(reverse("vendors:draft_msa", args=[self.alice_co.pk]))
+        self.assertEqual(response.status_code, 404)
         Envelope1Submission.objects.filter(pk=self.alice_sub.pk).update(status=S.PENDING_EVALUATION)
         self.bob_client.post(reverse("envelope1:reopen", args=[self.alice_sub.pk]))
         self.alice_sub.refresh_from_db()
@@ -99,7 +99,7 @@ class UploadKeptOnValidationErrorTests(TestCase):
         self.submission = make_submission(self.company)
 
     def test_quality_plan_pdf_survives_a_missing_declaration(self) -> None:
-        url = reverse("envelope1:wizard", args=[self.submission.pk, 5])
+        url = reverse("envelope1:wizard", args=[self.submission.pk, 3])
         response = self.client.post(
             url,
             {
@@ -129,11 +129,11 @@ class UploadKeptOnValidationErrorTests(TestCase):
                 "accepts_metmalaysia_eot": "on",
             },
         )
-        self.assertRedirects(again, reverse("envelope1:wizard", args=[self.submission.pk, 6]))
+        self.assertRedirects(again, reverse("envelope1:wizard", args=[self.submission.pk, 4]))
         self.assertEqual(stored.count(), 1)
 
     def test_financial_statement_row_survives_when_a_second_year_is_missing(self) -> None:
-        url = reverse("envelope1:wizard", args=[self.submission.pk, 3])
+        url = reverse("envelope1:wizard", args=[self.submission.pk, 1])
         response = self.client.post(
             url,
             {
@@ -167,7 +167,7 @@ class SubmittedPackLockTests(TestCase):
     def setUp(self) -> None:
         self.client = vendor_client(self.vendor, self.company)
         self.submission = make_submission(self.company, S.PENDING_EVALUATION)
-        self.wizard = reverse("envelope1:wizard", args=[self.submission.pk, 5])
+        self.wizard = reverse("envelope1:wizard", args=[self.submission.pk, 3])
         self.reopen = reverse("envelope1:reopen", args=[self.submission.pk])
 
     def test_submitted_pack_shows_overlay_and_rejects_edits(self) -> None:
@@ -222,7 +222,7 @@ class LeadTimeRangeTests(TestCase):
         cls.user = make_user("lead-time-vendor")
         cls.company = make_company(cls.user)
         cls.submission = make_submission(cls.company)
-        cls.url = reverse("envelope1:wizard", args=[cls.submission.pk, 4])
+        cls.url = reverse("envelope1:wizard", args=[cls.submission.pk, 2])
 
     def setUp(self) -> None:
         self.client = vendor_client(self.user, self.company)
@@ -251,7 +251,7 @@ class LeadTimeRangeTests(TestCase):
     def test_sabah_interest_saves_the_selected_range(self) -> None:
         response = self._post(lead_time_range="60_90")
         self.assertRedirects(
-            response, reverse("envelope1:wizard", args=[self.submission.pk, 5])
+            response, reverse("envelope1:wizard", args=[self.submission.pk, 3])
         )
         self.submission.refresh_from_db()
         self.assertTrue(self.submission.sabah_interest)
@@ -260,7 +260,7 @@ class LeadTimeRangeTests(TestCase):
     def test_no_sabah_interest_clears_the_range(self) -> None:
         response = self._post(sabah_interest="no", lead_time_range="30_60")
         self.assertRedirects(
-            response, reverse("envelope1:wizard", args=[self.submission.pk, 5])
+            response, reverse("envelope1:wizard", args=[self.submission.pk, 3])
         )
         self.submission.refresh_from_db()
         self.assertFalse(self.submission.sabah_interest)

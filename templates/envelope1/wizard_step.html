@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block extra_head %}
-  {% if editable and step == 6 %}<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>{% endif %}
+  {% if editable and step == 4 %}<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -41,48 +41,6 @@
         <div class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ form.non_field_errors }}</div>
       {% endif %}
       {% if step == 1 and form %}
-        <div class="grid gap-5 sm:grid-cols-2">
-          {% for field in form %}
-            <div class="{% if field.name == 'principal_address' %}sm:col-span-2{% endif %}">
-              <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-slate-700">{{ field.label }}</label>
-              {{ field }}
-              {% if field.errors %}<p class="mt-1 text-xs text-rose-600">{{ field.errors.0 }}</p>{% endif %}
-            </div>
-          {% endfor %}
-        </div>
-
-      {% elif step == 2 and form %}
-        <div class="rounded-xl border border-brand/20 bg-brand-50/40 px-4 py-3 text-sm text-slate-700">
-          {% if msa_ready %}
-            <a href="{% url 'envelope1:draft_msa' submission.pk %}" class="font-semibold text-brand hover:text-brand-700">
-              Download draft Master Service Agreement (PDF)
-            </a>
-            <span class="text-slate-500"> — generated from your saved party details.</span>
-          {% else %}
-            Save MSA party details in Step 1 before downloading the draft.
-          {% endif %}
-        </div>
-        <div class="rounded-xl border px-4 py-4 sm:px-5 {% if 'signed_msa' in correction_failed %}border-amber-300 bg-amber-50/80 ring-1 ring-amber-200{% else %}border-transparent{% endif %}">
-          {% include "envelope1/components/correction_flag.html" with item="signed_msa" %}
-          <div class="flex items-center gap-2">
-            <label for="{{ form.signed_msa_pdf.id_for_label }}" class="block text-sm font-medium text-slate-700">
-              {{ form.signed_msa_pdf.label }}
-            </label>
-            <span class="group relative inline-flex">
-              <button type="button" class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand ring-1 ring-brand/20" aria-label="Help">i</button>
-              <span class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden w-56 -translate-x-1/2 rounded-lg bg-slate-900 px-3 py-2 text-xs text-white shadow-lg group-hover:block group-focus-within:block">
-                {{ form.help_msa }}
-              </span>
-            </span>
-          </div>
-          {{ form.signed_msa_pdf }}
-          {% if docs.signed_msa %}
-            {% include "envelope1/components/document_on_file.html" with doc=docs.signed_msa %}
-          {% endif %}
-          {% if form.signed_msa_pdf.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.signed_msa_pdf.errors.0 }}</p>{% endif %}
-        </div>
-
-      {% elif step == 3 and form %}
         <section class="rounded-xl border px-4 py-4 sm:px-5 {% if 'audited_financials' in correction_failed %}border-amber-300 bg-amber-50/80 ring-1 ring-amber-200{% else %}border-slate-100 bg-cream/40{% endif %}">
           {% include "envelope1/components/correction_flag.html" with item="audited_financials" %}
           {% include "envelope1/components/item_heading.html" with title=item_labels.audited_financials tip=item_help.audited_financials %}
@@ -108,18 +66,14 @@
           {% include "envelope1/components/item_heading.html" with title=item_labels.no_advance tip=item_help.no_advance %}
           <div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start">
             <div class="sm:w-56 sm:shrink-0">
-              {% if msa_ready %}
-                <a href="{% url 'envelope1:no_advance_template' submission.pk %}"
-                   class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-brand/30 bg-white px-4 py-2.5 text-sm font-semibold text-brand shadow-sm hover:bg-brand-50">
-                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                  </svg>
-                  Download declaration
-                </a>
-                <p class="mt-1.5 text-xs text-slate-500">Pre-filled with your MSA party details.</p>
-              {% else %}
-                <p class="text-xs text-slate-500">Save MSA party details in Step 1 to download the declaration.</p>
-              {% endif %}
+              <a href="{% url 'envelope1:no_advance_template' submission.pk %}"
+                 class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-brand/30 bg-white px-4 py-2.5 text-sm font-semibold text-brand shadow-sm hover:bg-brand-50">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+                Download declaration
+              </a>
+              <p class="mt-1.5 text-xs text-slate-500">Pre-filled with your company's MSA party details.</p>
             </div>
             <div class="min-w-0 flex-1">
               {% include "envelope1/components/upload_field.html" with field=form.no_advance_pdf doc=docs.no_advance %}
@@ -132,7 +86,7 @@
           <div class="mt-3">{% include "envelope1/components/upload_field.html" with field=form.car_insurance_pdf doc=docs.car_insurance expiry=form.car_insurance_expiry %}</div>
         </section>
 
-      {% elif step == 4 and form %}
+      {% elif step == 2 and form %}
         <section class="rounded-xl border px-4 py-4 sm:px-5 {% if 'sabah_interest' in correction_failed %}border-amber-300 bg-amber-50/80 ring-1 ring-amber-200{% else %}border-slate-100 bg-cream/40{% endif %}">
           {% include "envelope1/components/correction_flag.html" with item="sabah_interest" %}
           {% include "envelope1/components/item_heading.html" with title=item_labels.sabah_interest %}
@@ -166,7 +120,7 @@
           </div>
         </section>
 
-      {% elif step == 5 and form %}
+      {% elif step == 3 and form %}
         <section class="rounded-xl border px-4 py-4 sm:px-5 {% if 'site_supervisor' in correction_failed %}border-amber-300 bg-amber-50/80 ring-1 ring-amber-200{% else %}border-slate-100 bg-cream/40{% endif %}">
           {% include "envelope1/components/correction_flag.html" with item="site_supervisor" %}
           {% include "envelope1/components/item_heading.html" with title=item_labels.site_supervisor tip=item_help.site_supervisor %}
@@ -197,7 +151,7 @@
           <div class="mt-3">{% include "envelope1/components/yes_no_upload.html" with answer=form.has_hse_plan upload=form.hse_plan_pdf doc=docs.hse_plan %}</div>
         </section>
 
-      {% elif step == 6 and form %}
+      {% elif step == 4 and form %}
         <section class="rounded-xl border px-4 py-4 sm:px-5 {% if 'past_projects' in correction_failed %}border-amber-300 bg-amber-50/80 ring-1 ring-amber-200{% else %}border-slate-100 bg-cream/40{% endif %}">
           {% include "envelope1/components/correction_flag.html" with item="past_projects" %}
           {% include "envelope1/components/item_heading.html" with title=item_labels.past_projects tip=item_help.past_projects %}
@@ -241,20 +195,7 @@
           {% endif %}
         </div>
           <div class="flex flex-col gap-2 sm:flex-row">
-            {% if step == 1 %}
-              <button
-                type="submit"
-                name="action"
-                value="save"
-                class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50"
-              >Save draft</button>
-              <button
-                type="submit"
-                name="action"
-                value="continue"
-                class="inline-flex items-center justify-center rounded-xl bg-brand px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
-              >Save &amp; continue &gt;</button>
-            {% elif step == 6 %}
+            {% if step == 4 %}
               <button
                 type="submit"
                 id="envelope1-submit-btn"
@@ -274,7 +215,7 @@
 {% endblock %}
 
 {% block extra_js %}
-  {% if editable and step >= 3 %}
+  {% if editable %}
     <script>
       (function () {
         // Yes/No: show the matching data-reveal-for block only when "yes" is picked
@@ -310,7 +251,7 @@
       })()
     </script>
   {% endif %}
-  {% if editable and step == 6 %}
+  {% if editable and step == 4 %}
     <script>
       (function () {
         if (typeof Swal === 'undefined') return

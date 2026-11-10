@@ -71,6 +71,33 @@ def validate_pdf_upload(uploaded) -> None:  # type: ignore[no-untyped-def]
         raise ValidationError("File does not look like a valid PDF.")
 
 
+IC_EXTENSIONS = (".pdf", ".jpg", ".jpeg", ".png")
+IC_CONTENT_TYPES = (
+    "application/pdf",
+    "application/x-pdf",
+    "image/jpeg",
+    "image/png",
+)
+
+
+def validate_ic_upload(uploaded) -> None:  # type: ignore[no-untyped-def]
+    """Accept a PDF or a scanned/photographed IC image."""
+    if uploaded is None:
+        return
+    name = (getattr(uploaded, "name", "") or "").lower()
+    content_type = (getattr(uploaded, "content_type", "") or "").lower()
+    if not name.endswith(IC_EXTENSIONS) and content_type not in IC_CONTENT_TYPES:
+        raise ValidationError("Upload the IC as a PDF, JPG, or PNG.")
+    if uploaded.size > MAX_PDF_BYTES:
+        raise ValidationError(f"IC file must be {MAX_PDF_MB} MB or smaller.")
+    if name.endswith(".pdf") or content_type in ("application/pdf", "application/x-pdf"):
+        pos = uploaded.tell()
+        header = uploaded.read(5)
+        uploaded.seek(pos)
+        if header and not header.startswith(b"%PDF"):
+            raise ValidationError("File does not look like a valid PDF.")
+
+
 def _mark_required_labels(form: forms.BaseForm) -> None:
     """Append a red * to labels of required fields for template display."""
     mark_required_labels(form)
@@ -102,14 +129,31 @@ def _require_future_or_today(field: forms.Field) -> None:
 
 
 class Step1ProfileForm(forms.ModelForm):
+    signed_msa_pdf = forms.FileField(
+        required=False,
+        label="Signed Master Service Agreement (PDF)",
+        widget=forms.ClearableFileInput(attrs=_FILE),
+    )
+
     class Meta:
         model = Company
-        fields = ("name", "primary_contact_name", "contact_number", "official_email")
+        fields = (
+            "name",
+            "primary_contact_name",
+            "contact_number",
+            "official_email",
+            "principal_address",
+            "msa_signatory_name",
+            "msa_signatory_designation",
+        )
         labels = {
             "name": "Registered Company Name",
             "primary_contact_name": "Primary Contact Person",
             "contact_number": "Contact Number",
             "official_email": "Official Email",
+            "principal_address": "Registered / Principal Address",
+            "msa_signatory_name": "MSA Signatory Name",
+            "msa_signatory_designation": "MSA Signatory Designation",
         }
         widgets = {
             "name": forms.TextInput(
@@ -124,13 +168,23 @@ class Step1ProfileForm(forms.ModelForm):
             "official_email": forms.EmailInput(
                 attrs={**_INPUT, "placeholder": "e.g. abu@cahaya.com.my"}
             ),
+            "principal_address": forms.Textarea(attrs={**_INPUT, "rows": 3}),
+            "msa_signatory_name": forms.TextInput(attrs=_INPUT),
+            "msa_signatory_designation": forms.TextInput(attrs=_INPUT),
         }
 
     def __init__(self, *args, **kwargs) -> None:  # type: ignore[no-untyped-def]
         super().__init__(*args, **kwargs)
-        for field in self.fields.values():
-            field.required = True
+        for name, field in self.fields.items():
+            if name != "signed_msa_pdf":
+                field.required = True
         _mark_required_labels(self)
+
+    def clean_signed_msa_pdf(self):
+        pdf = self.cleaned_data.get("signed_msa_pdf")
+        if pdf:
+            validate_pdf_upload(pdf)
+        return pdf
 
 
 class Step2SSMForm(forms.ModelForm):
@@ -138,6 +192,11 @@ class Step2SSMForm(forms.ModelForm):
         required=False,
         label="SSM document (PDF)",
         widget=forms.ClearableFileInput(attrs=_FILE),
+    )
+    ic_pdf = forms.FileField(
+        required=False,
+        label="Identity card — IC (PDF, JPG, or PNG)",
+        widget=forms.ClearableFileInput(attrs={**_FILE, "accept": ".pdf,.jpg,.jpeg,.png"}),
     )
 
     class Meta:
@@ -163,6 +222,7 @@ class Step2SSMForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs) -> None:  # type: ignore[no-untyped-def]
         self.require_pdf = kwargs.pop("require_pdf", True)
+        self.has_ic = kwargs.pop("has_ic", False)
         super().__init__(*args, **kwargs)
         self.fields["ssm_registration_number"].required = True
         self.fields["date_of_incorporation"].required = True
@@ -170,6 +230,7 @@ class Step2SSMForm(forms.ModelForm):
         # Expiry only required when enterprise is checked (enforced in clean + UI)
         self.fields["ssm_document_expiry"].required = False
         self.fields["ssm_pdf"].required = self.require_pdf
+        self.fields["ic_pdf"].required = False
         _require_future_or_today(self.fields["ssm_document_expiry"])
         _mark_required_labels(self)
         # Enterprise checkbox is optional — do not force * on its label
@@ -185,6 +246,12 @@ class Step2SSMForm(forms.ModelForm):
             validate_pdf_upload(pdf)
         return pdf
 
+    def clean_ic_pdf(self):
+        ic = self.cleaned_data.get("ic_pdf")
+        if ic:
+            validate_ic_upload(ic)
+        return ic
+
     def clean(self) -> dict:
         cleaned = super().clean()
         _check_unique_identifier(self, cleaned, "ssm_registration_number")
@@ -194,6 +261,11 @@ class Step2SSMForm(forms.ModelForm):
                 self.add_error("ssm_document_expiry", "Required for enterprises.")
             elif expiry < timezone.localdate():
                 self.add_error("ssm_document_expiry", "Document is already expired.")
+            if not cleaned.get("ic_pdf") and not self.has_ic:
+                self.add_error(
+                    "ic_pdf",
+                    "Upload the owner's IC because this company is not a Sdn Bhd.",
+                )
         else:
             cleaned["ssm_document_expiry"] = None
         return cleaned

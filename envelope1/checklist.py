@@ -6,7 +6,6 @@ from envelope1.models import Envelope1Document, Envelope1Item
 
 # Help text shown beside each item (info icon tooltip)
 ITEM_HELP: dict[str, str] = {
-    Envelope1Item.SIGNED_MSA: "Upload the MSA PDF you signed after downloading the draft.",
     Envelope1Item.FINANCIAL_STATEMENTS: (
         "Audited financial statements for at least the last two financial years — "
         "one PDF per year."
@@ -45,27 +44,26 @@ ITEM_HELP: dict[str, str] = {
 
 # Step → checklist items Procurement evaluates (vendor wizard order)
 STEP_ITEMS: dict[int, list[str]] = {
-    2: [Envelope1Item.SIGNED_MSA],
-    3: [
+    1: [
         Envelope1Item.FINANCIAL_STATEMENTS,
         Envelope1Item.BANK_FACILITY,
         Envelope1Item.SUPPLIER_CREDIT,
         Envelope1Item.NO_ADVANCE,
         Envelope1Item.CAR_INSURANCE,
     ],
-    4: [
+    2: [
         Envelope1Item.SABAH_INTEREST,
         Envelope1Item.PRIMARY_SUPPLIERS,
         Envelope1Item.LEAD_TIME,
     ],
-    5: [
+    3: [
         Envelope1Item.SITE_SUPERVISOR,
         Envelope1Item.TIMESTAMPED_REPORTING,
         Envelope1Item.METMALAYSIA_EOT,
         Envelope1Item.QUALITY_PLAN,
         Envelope1Item.HSE_PLAN,
     ],
-    6: [
+    4: [
         Envelope1Item.PAST_PROJECTS,
         Envelope1Item.CLIENT_REFERENCES,
         Envelope1Item.ORG_CHART,
@@ -91,7 +89,6 @@ YES_NO_UPLOADS: dict[str, tuple[str, str]] = {
 
 # Always-required single uploads: item → doc type
 REQUIRED_UPLOADS: dict[str, str] = {
-    Envelope1Item.SIGNED_MSA: Envelope1Document.DocType.SIGNED_MSA,
     Envelope1Item.NO_ADVANCE: Envelope1Document.DocType.NO_ADVANCE,
     Envelope1Item.CAR_INSURANCE: Envelope1Document.DocType.CAR_INSURANCE,
     Envelope1Item.ORG_CHART: Envelope1Document.DocType.ORG_CHART,
@@ -135,31 +132,21 @@ MIN_FINANCIAL_STATEMENTS = 2
 
 STEP_META: dict[int, dict[str, str]] = {
     1: {
-        "title": "MSA party details",
-        "short": "MSA Party",
-        "hint": "Details used to generate the draft Master Service Agreement.",
-    },
-    2: {
-        "title": "Upload signed Master Service Agreement",
-        "short": "Signed Master Service Agreement",
-        "hint": "Download the draft MSA, sign it, then upload the signed PDF.",
-    },
-    3: {
         "title": "Statutory evidence & financials",
         "short": "Financials",
         "hint": "Financial statements, credit arrangements, and insurance.",
     },
-    4: {
+    2: {
         "title": "Logistics",
         "short": "Logistics",
         "hint": "Sabah coverage, primary suppliers, and delivery lead time.",
     },
-    5: {
+    3: {
         "title": "Quality, safety & governance",
         "short": "Quality & HSE",
         "hint": "Site supervision, reporting commitments, quality and HSE plans.",
     },
-    6: {
+    4: {
         "title": "Track record & organisation",
         "short": "Track record",
         "hint": "Past projects, client references, and organisation chart — then submit.",

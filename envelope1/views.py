@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import mimetypes
 from urllib.parse import quote
 
 from django import forms
@@ -22,12 +23,9 @@ from audit.models import AuditLog
 from audit.services import write_audit
 from documents.storage import open_stored
 from envelope1.checklist import ITEM_HELP, LEAD_TIME_DESCRIPTION, STEP_ITEMS, STEP_META
-from envelope1.documents import save_envelope1_pdf
 from envelope1.forms import (
     BaseRowFormSet,
     QuestionnaireStepForm,
-    Step1MSAPartyForm,
-    Step2SignedMSAForm,
     Step3FinancialsForm,
     Step4LogisticsForm,
     Step5QualityForm,
@@ -41,12 +39,7 @@ from envelope1.models import (
     Envelope1Submission,
     WithdrawalRequest,
 )
-from envelope1.msa import (
-    build_draft_msa_pdf,
-    build_no_advance_pdf,
-    msa_download_filename,
-    no_advance_download_filename,
-)
+from envelope1.msa import build_no_advance_pdf, no_advance_download_filename
 from envelope1.services import (
     can_access_envelope1,
     get_or_create_draft,
@@ -56,20 +49,20 @@ from envelope1.services import (
 )
 
 STEP_FORMS: dict[int, type[QuestionnaireStepForm]] = {
-    3: Step3FinancialsForm,
-    4: Step4LogisticsForm,
-    5: Step5QualityForm,
-    6: Step6TrackRecordForm,
+    1: Step3FinancialsForm,
+    2: Step4LogisticsForm,
+    3: Step5QualityForm,
+    4: Step6TrackRecordForm,
 }
 STEP_TABLES: dict[int, str] = {
-    3: "financial_statements",
-    4: "primary_suppliers",
-    6: "past_projects",
+    1: "financial_statements",
+    2: "primary_suppliers",
+    4: "past_projects",
 }
 STEP_TABLE_ITEMS: dict[int, str] = {
-    3: Envelope1Item.FINANCIAL_STATEMENTS,
-    4: Envelope1Item.PRIMARY_SUPPLIERS,
-    6: Envelope1Item.PAST_PROJECTS,
+    1: Envelope1Item.FINANCIAL_STATEMENTS,
+    2: Envelope1Item.PRIMARY_SUPPLIERS,
+    4: Envelope1Item.PAST_PROJECTS,
 }
 from vendors.models import Company, CompanyDocument
 
@@ -228,67 +221,7 @@ def envelope1_wizard(request: HttpRequest, pk: int, step: int) -> HttpResponse:
     form: forms.BaseForm | None = None
     row_formset: BaseRowFormSet | None = None
 
-    if step == 1:
-        if request.method == "POST":
-            form = Step1MSAPartyForm(request.POST, instance=submission)
-            if form.is_valid():
-                with transaction.atomic():
-                    obj = form.save(commit=False)
-                    obj.msa_party_saved_at = timezone.now()
-                    obj.wizard_step = max(obj.wizard_step, 1)
-                    obj.save()
-                    write_audit(
-                        category=AuditLog.Category.COMPANY,
-                        action="envelope1_step_1_saved",
-                        actor=request.user,
-                        request=request,
-                        changes={"cycle": obj.cycle_number},
-                        object_type="Envelope1Submission",
-                        object_id=obj.pk,
-                    )
-                messages.success(request, "MSA party details saved.")
-                if request.POST.get("action") == "continue":
-                    return redirect("envelope1:wizard", pk=submission.pk, step=2)
-                return redirect("envelope1:wizard", pk=submission.pk, step=1)
-        else:
-            form = Step1MSAPartyForm(instance=submission)
-
-    elif step == 2:
-        require_pdf = (
-            Envelope1Document.DocType.SIGNED_MSA not in docs or correction_mode
-        )
-        if request.method == "POST":
-            form = Step2SignedMSAForm(request.POST, request.FILES, require_pdf=require_pdf)
-            if form.is_valid():
-                with transaction.atomic():
-                    submission.wizard_step = max(submission.wizard_step, 2)
-                    submission.save(update_fields=["wizard_step", "updated_at"])
-                    pdf = form.cleaned_data.get("signed_msa_pdf")
-                    if pdf:
-                        save_envelope1_pdf(
-                            submission=submission,
-                            doc_type=Envelope1Document.DocType.SIGNED_MSA,
-                            uploaded=pdf,
-                            user=request.user,
-                        )
-                    write_audit(
-                        category=AuditLog.Category.COMPANY,
-                        action="envelope1_step_2_saved",
-                        actor=request.user,
-                        request=request,
-                        changes={"cycle": submission.cycle_number},
-                        object_type="Envelope1Submission",
-                        object_id=submission.pk,
-                    )
-                messages.success(request, "Signed MSA details saved.")
-                if correction_mode:
-                    messages.success(request, "Correction saved. Resubmit when you are done.")
-                    return redirect("envelope1:corrections", pk=submission.pk)
-                return redirect("envelope1:wizard", pk=submission.pk, step=3)
-        else:
-            form = Step2SignedMSAForm(require_pdf=require_pdf)
-
-    elif step in STEP_FORMS:
+    if step in STEP_FORMS:
         form_cls = STEP_FORMS[step]
         table_kind = STEP_TABLES.get(step)
         table_item = STEP_TABLE_ITEMS.get(step)
@@ -331,22 +264,20 @@ def envelope1_wizard(request: HttpRequest, pk: int, step: int) -> HttpResponse:
                 if correction_mode:
                     messages.success(request, "Correction saved. Resubmit when you are done.")
                     return redirect("envelope1:corrections", pk=submission.pk)
-                if step < 6:
+                if step < 4:
                     messages.success(request, f"Step {step} saved.")
                     return redirect("envelope1:wizard", pk=submission.pk, step=step + 1)
 
-                # Step 6 — submit Envelope 1 only when every checklist item is answered
+                # Final step — submit only when every checklist item is answered
                 missing = missing_items(submission)
-                if missing or not submission.msa_party_saved_at:
+                if missing:
                     labels = dict(Envelope1Item.choices)
                     pending = [labels[item] for item in missing]
-                    if not submission.msa_party_saved_at:
-                        pending.insert(0, "MSA party details")
                     messages.error(
                         request,
                         "Complete these items before submitting: " + "; ".join(pending) + ".",
                     )
-                    return redirect("envelope1:wizard", pk=submission.pk, step=6)
+                    return redirect("envelope1:wizard", pk=submission.pk, step=4)
 
                 submission.status = Envelope1Submission.Status.PENDING_EVALUATION
                 submission.submitted_at = timezone.now()
@@ -405,7 +336,6 @@ def envelope1_wizard(request: HttpRequest, pk: int, step: int) -> HttpResponse:
                 and STEP_TABLE_ITEMS.get(step)
                 and STEP_TABLE_ITEMS[step] not in correction_items
             ),
-            "msa_ready": bool(submission.msa_party_saved_at),
             "pending_withdrawal": submission.withdrawal_requests.filter(
                 status=WithdrawalRequest.Status.PENDING
             ).first()
@@ -456,35 +386,6 @@ def reopen_submission(request: HttpRequest, pk: int) -> HttpResponse:
 
 
 @login_required
-def download_draft_msa(request: HttpRequest, pk: int) -> HttpResponse:
-    company = _vendor_company(request)
-    if not isinstance(company, Company):
-        return company
-    submission = Envelope1Submission.objects.filter(pk=pk, company=company).first()
-    if submission is None:
-        return redirect("envelope1:home")
-    if not submission.msa_party_saved_at:
-        messages.error(request, "Save MSA party details before downloading the draft.")
-        return redirect("envelope1:wizard", pk=submission.pk, step=1)
-    pdf = build_draft_msa_pdf(submission)
-    filename = msa_download_filename(submission)
-    response = HttpResponse(pdf, content_type="application/pdf")
-    response["Content-Disposition"] = (
-        f"attachment; filename=\"{filename}\"; filename*=UTF-8''{quote(filename)}"
-    )
-    write_audit(
-        category=AuditLog.Category.DOCUMENT,
-        action="envelope1_draft_msa_downloaded",
-        actor=request.user,
-        request=request,
-        changes={"cycle": submission.cycle_number},
-        object_type="Envelope1Submission",
-        object_id=submission.pk,
-    )
-    return response
-
-
-@login_required
 def download_no_advance_declaration(request: HttpRequest, pk: int) -> HttpResponse:
     """1.4 template: pre-filled declaration the vendor signs and uploads back."""
     company = _vendor_company(request)
@@ -493,11 +394,10 @@ def download_no_advance_declaration(request: HttpRequest, pk: int) -> HttpRespon
     submission = Envelope1Submission.objects.filter(pk=pk, company=company).first()
     if submission is None:
         return redirect("envelope1:home")
-    if not submission.msa_party_saved_at:
-        messages.error(request, "Save MSA party details before downloading the declaration.")
-        return redirect("envelope1:wizard", pk=submission.pk, step=1)
-    filename = no_advance_download_filename(submission)
-    response = HttpResponse(build_no_advance_pdf(submission), content_type="application/pdf")
+    filename = no_advance_download_filename(submission.company)
+    response = HttpResponse(
+        build_no_advance_pdf(submission.company), content_type="application/pdf"
+    )
     response["Content-Disposition"] = (
         f"attachment; filename=\"{filename}\"; filename*=UTF-8''{quote(filename)}"
     )
@@ -578,9 +478,10 @@ def withdrawal_request(request: HttpRequest, pk: int) -> HttpResponse:
 
 
 def _pdf_response(*, path: str, backend: str, filename: str) -> HttpResponse:
-    """Stream a stored PDF inline so the browser can display it."""
+    """Stream a stored document inline so the browser can display it."""
     data = open_stored(path=path, backend=backend)
-    response = HttpResponse(data, content_type="application/pdf")
+    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    response = HttpResponse(data, content_type=content_type)
     safe_name = filename.replace('"', "")
     response["Content-Disposition"] = f'inline; filename="{safe_name}"'
     response["Content-Length"] = str(len(data))

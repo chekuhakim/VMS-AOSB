@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import mimetypes
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
@@ -154,8 +156,10 @@ def company_detail(request: HttpRequest, pk: int) -> HttpResponse:
 def view_company_document(request: HttpRequest, pk: int) -> HttpResponse:
     doc = get_object_or_404(CompanyDocument, pk=pk)
     data = open_stored(path=doc.storage_path, backend=doc.storage_backend)
-    response = HttpResponse(data, content_type="application/pdf")
-    safe = (doc.original_filename or f"{doc.doc_type}.pdf").replace('"', "")
+    filename = doc.original_filename or f"{doc.doc_type}.pdf"
+    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    response = HttpResponse(data, content_type=content_type)
+    safe = filename.replace('"', "")
     response["Content-Disposition"] = f'inline; filename="{safe}"'
     return response
 

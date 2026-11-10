@@ -26,12 +26,10 @@ ICONS: dict[str, str] = {
 }
 
 STEP_ICONS: dict[int, str] = {
-    1: "building",
-    2: "upload",
-    3: "banknotes",
-    4: "truck",
-    5: "shield",
-    6: "users",
+    1: "banknotes",
+    2: "truck",
+    3: "shield",
+    4: "users",
 }
 
 
@@ -48,20 +46,5 @@ def build_stepper(step_status: dict[int, str]) -> list[dict[str, Any]]:
 
 
 def read_only_fields(submission: Envelope1Submission, step: int) -> list[dict[str, Any]]:
-    """Vendor-entered values shown (not editable) above the document cards."""
-    if step == 1:
-        spec = [
-            ("Contractor / Company Legal Name", submission.legal_name, "building", False),
-            ("Company Number (SSM Registration Number)", submission.ssm_registration_number, "id", False),
-            ("Principal Business Address", submission.principal_address, "map", True),
-            ("Contact Name", submission.contact_name, "user", False),
-            ("Contact Email", submission.contact_email, "mail", False),
-            ("MSA Signatory Name", submission.msa_signatory_name, "pen", False),
-            ("MSA Signatory Designation", submission.msa_signatory_designation, "briefcase", False),
-        ]
-    else:
-        spec = []
-    return [
-        {"label": label, "value": value, "icon": ICONS[icon], "wide": wide}
-        for label, value, icon, wide in spec
-    ]
+    """Envelope 1 now starts at financials; party details live in company registration."""
+    return []

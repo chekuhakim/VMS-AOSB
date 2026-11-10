@@ -10,6 +10,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
+from urllib.parse import quote
 
 from accounts.company_context import get_active_company_id, set_active_company_id
 from accounts.models import Notification
@@ -17,6 +18,7 @@ from accounts.notifications import notify_event, staff_recipients
 from accounts.roles import PROCUREMENT, is_vendor_user
 from audit.models import AuditLog
 from audit.services import client_ip, write_audit
+from envelope1.msa import build_draft_msa_pdf, msa_download_filename
 from vendors.declarations import DECLARATION_TEXT, DECLARATION_VERSION
 from vendors.documents import save_company_pdf
 from vendors.forms import (
@@ -138,6 +140,29 @@ def delete_company(request: HttpRequest, pk: int) -> HttpResponse:
 
 
 @login_required
+def download_company_msa(request: HttpRequest, pk: int) -> HttpResponse:
+    """Draft MSA generated from the company's basic-info party details."""
+    blocked = _vendor_gate(request)
+    if blocked:
+        return blocked
+    company = _owned_company(request, pk)
+    data = build_draft_msa_pdf(company)
+    filename = msa_download_filename(company)
+    response = HttpResponse(data, content_type="application/pdf")
+    response["Content-Disposition"] = f"attachment; filename*=UTF-8''{quote(filename)}"
+    write_audit(
+        category=AuditLog.Category.COMPANY,
+        action="company_draft_msa_downloaded",
+        actor=request.user,
+        request=request,
+        changes={"name": company.name},
+        object_type="Company",
+        object_id=company.pk,
+    )
+    return response
+
+
+@login_required
 @require_http_methods(["GET", "POST"])
 def register_company(request: HttpRequest) -> HttpResponse:
     """Start a new draft company, then jump to step 1."""
@@ -226,11 +251,18 @@ def wizard_step(request: HttpRequest, pk: int, step: int) -> HttpResponse:
         CompanyDocument.DocType.ST: company.documents.filter(
             doc_type=CompanyDocument.DocType.ST
         ).exists(),
+        CompanyDocument.DocType.IC: company.documents.filter(
+            doc_type=CompanyDocument.DocType.IC
+        ).exists(),
+        CompanyDocument.DocType.SIGNED_MSA: company.documents.filter(
+            doc_type=CompanyDocument.DocType.SIGNED_MSA
+        ).exists(),
     }
 
     form_kwargs: dict = {"instance": company}
     if step == 2:
         form_kwargs["require_pdf"] = not has_pdf[CompanyDocument.DocType.SSM]
+        form_kwargs["has_ic"] = has_pdf[CompanyDocument.DocType.IC]
     elif step == 3:
         opted_out = company.no_cidb_registration
         if request.method == "POST":
@@ -281,6 +313,12 @@ def wizard_step(request: HttpRequest, pk: int, step: int) -> HttpResponse:
                 CompanyDocument.DocType.ST: company.documents.filter(
                     doc_type=CompanyDocument.DocType.ST
                 ).exists(),
+                CompanyDocument.DocType.IC: company.documents.filter(
+                    doc_type=CompanyDocument.DocType.IC
+                ).exists(),
+                CompanyDocument.DocType.SIGNED_MSA: company.documents.filter(
+                    doc_type=CompanyDocument.DocType.SIGNED_MSA
+                ).exists(),
             }
     else:
         form = form_class(**form_kwargs)
@@ -298,6 +336,8 @@ def wizard_step(request: HttpRequest, pk: int, step: int) -> HttpResponse:
                 "ssm": has_pdf[CompanyDocument.DocType.SSM],
                 "cidb": has_pdf[CompanyDocument.DocType.CIDB],
                 "st": has_pdf[CompanyDocument.DocType.ST],
+                "ic": has_pdf[CompanyDocument.DocType.IC],
+                "signed_msa": has_pdf[CompanyDocument.DocType.SIGNED_MSA],
             },
             "declaration_text": DECLARATION_TEXT if step == 6 else "",
             "declaration_version": DECLARATION_VERSION if step == 6 else "",
@@ -312,6 +352,16 @@ def _keep_registration_upload(request: HttpRequest, company: Company, step: int,
     and the file input is no longer required.
     """
     cleaned = form.cleaned_data
+    saved = False
+    if step == 1 and cleaned.get("signed_msa_pdf") and "signed_msa_pdf" not in form.errors:
+        save_company_pdf(
+            company=company,
+            doc_type=CompanyDocument.DocType.SIGNED_MSA,
+            uploaded=cleaned["signed_msa_pdf"],
+            user=request.user,
+        )
+        form.fields["signed_msa_pdf"].required = False
+        saved = True
     if step == 2 and cleaned.get("ssm_pdf") and "ssm_pdf" not in form.errors:
         save_company_pdf(
             company=company,
@@ -323,7 +373,16 @@ def _keep_registration_upload(request: HttpRequest, company: Company, step: int,
             else None,
         )
         form.fields["ssm_pdf"].required = False
-        return True
+        saved = True
+    if step == 2 and cleaned.get("ic_pdf") and "ic_pdf" not in form.errors:
+        save_company_pdf(
+            company=company,
+            doc_type=CompanyDocument.DocType.IC,
+            uploaded=cleaned["ic_pdf"],
+            user=request.user,
+        )
+        form.fields["ic_pdf"].required = False
+        saved = True
     if step == 3 and cleaned.get("no_cidb_registration"):
         return False
     if step == 3 and cleaned.get("cidb_pdf") and "cidb_pdf" not in form.errors:
@@ -337,7 +396,7 @@ def _keep_registration_upload(request: HttpRequest, company: Company, step: int,
             else None,
         )
         form.fields["cidb_pdf"].required = False
-        return True
+        saved = True
     if step == 4 and cleaned.get("st_pdf") and "st_pdf" not in form.errors:
         save_company_pdf(
             company=company,
@@ -349,18 +408,32 @@ def _keep_registration_upload(request: HttpRequest, company: Company, step: int,
             else None,
         )
         form.fields["st_pdf"].required = False
-        return True
-    return False
+        saved = True
+    return saved
 
 
 def _maybe_store_pdfs(request: HttpRequest, company: Company, step: int, form) -> None:  # type: ignore[no-untyped-def]
-    if step == 2 and form.cleaned_data.get("ssm_pdf"):
+    if step == 1 and form.cleaned_data.get("signed_msa_pdf"):
+        save_company_pdf(
+            company=company,
+            doc_type=CompanyDocument.DocType.SIGNED_MSA,
+            uploaded=form.cleaned_data["signed_msa_pdf"],
+            user=request.user,
+        )
+    elif step == 2 and form.cleaned_data.get("ssm_pdf"):
         save_company_pdf(
             company=company,
             doc_type=CompanyDocument.DocType.SSM,
             uploaded=form.cleaned_data["ssm_pdf"],
             user=request.user,
             expiry_date=form.cleaned_data.get("ssm_document_expiry"),
+        )
+    if step == 2 and form.cleaned_data.get("ic_pdf"):
+        save_company_pdf(
+            company=company,
+            doc_type=CompanyDocument.DocType.IC,
+            uploaded=form.cleaned_data["ic_pdf"],
+            user=request.user,
         )
     elif step == 3 and form.cleaned_data.get("no_cidb_registration"):
         # The declaration replaces the certificate, so an earlier upload must not linger.
@@ -385,6 +458,23 @@ def _maybe_store_pdfs(request: HttpRequest, company: Company, step: int, form) -
 
 def _submit_registration(request: HttpRequest, company: Company) -> HttpResponse:
     """Apply declaration snapshot + rules engine; set approved/rejected."""
+    if not company.documents.filter(
+        doc_type=CompanyDocument.DocType.SIGNED_MSA
+    ).exists():
+        messages.error(
+            request,
+            "Upload the signed Master Service Agreement in Basic Info before submitting.",
+        )
+        return redirect("vendors:wizard_step", pk=company.pk, step=1)
+    if company.is_enterprise and not company.documents.filter(
+        doc_type=CompanyDocument.DocType.IC
+    ).exists():
+        messages.error(
+            request,
+            "Upload the owner's IC in SSM E-info because this company is not a Sdn Bhd.",
+        )
+        return redirect("vendors:wizard_step", pk=company.pk, step=2)
+
     company.declaration_accepted = True
     company.declaration_text_version = DECLARATION_VERSION
     company.declaration_accepted_at = timezone.now()

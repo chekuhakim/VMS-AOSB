@@ -74,6 +74,9 @@ def create_sample_company(*, owner: AbstractBaseUser) -> Company:
         primary_contact_name="Abu bin Bakar",
         contact_number="0123456789",
         official_email="abu@cahaya.com.my",
+        principal_address="Lot 12, Jalan Perindustrian, 88450 Kota Kinabalu, Sabah",
+        msa_signatory_name="Abu bin Bakar",
+        msa_signatory_designation="Managing Director",
         # Step 2
         ssm_registration_number=ids["ssm_registration_number"],
         date_of_incorporation=date(2018, 3, 15),
@@ -116,5 +119,17 @@ def create_sample_company(*, owner: AbstractBaseUser) -> Company:
         uploaded=_sample_pdf("st-sample.pdf"),
         user=owner,
         expiry_date=company.st_certificate_expiry,
+    )
+    save_company_pdf(
+        company=company,
+        doc_type=CompanyDocument.DocType.IC,
+        uploaded=_sample_pdf("ic-sample.pdf"),
+        user=owner,
+    )
+    save_company_pdf(
+        company=company,
+        doc_type=CompanyDocument.DocType.SIGNED_MSA,
+        uploaded=_sample_pdf("signed-msa-sample.pdf"),
+        user=owner,
     )
     return company

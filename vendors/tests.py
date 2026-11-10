@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 from django.core import mail
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -106,6 +107,66 @@ class RegistrationUploadKeptTests(TestCase):
         self.assertNotIn("incomplete_cidb", result.reason_codes)
         self.assertNotIn("missing_cidb_document", result.reason_codes)
         self.assertTrue(result.approved)
+
+
+class RegistrationMsaAndIcTests(TestCase):
+    def _company(self, name: str) -> Company:
+        owner = make_user(name)
+        return make_company(owner, status=Company.RegistrationStatus.DRAFT)
+
+    def test_signed_msa_can_be_uploaded_with_basic_info(self) -> None:
+        company = self._company("msa-upload")
+        company.documents.filter(doc_type=CompanyDocument.DocType.SIGNED_MSA).delete()
+        response = vendor_client(company.owner, company).post(
+            reverse("vendors:wizard_step", args=[company.pk, 1]),
+            {
+                "name": company.name,
+                "primary_contact_name": "Abu bin Bakar",
+                "contact_number": "0123456789",
+                "official_email": "abu@example.com",
+                "principal_address": "Lot 1, Kota Kinabalu",
+                "msa_signatory_name": "Abu bin Bakar",
+                "msa_signatory_designation": "Director",
+                "signed_msa_pdf": pdf("signed-msa.pdf"),
+            },
+        )
+        self.assertRedirects(response, reverse("vendors:wizard_step", args=[company.pk, 2]))
+        self.assertTrue(
+            company.documents.filter(
+                doc_type=CompanyDocument.DocType.SIGNED_MSA,
+                original_filename="signed-msa.pdf",
+            ).exists()
+        )
+
+    def test_enterprise_requires_ic_and_accepts_image(self) -> None:
+        company = self._company("ic-upload")
+        company.documents.filter(doc_type=CompanyDocument.DocType.IC).delete()
+        company.is_enterprise = True
+        company.save(update_fields=["is_enterprise"])
+        url = reverse("vendors:wizard_step", args=[company.pk, 2])
+        data = {
+            "ssm_registration_number": company.ssm_registration_number,
+            "date_of_incorporation": company.date_of_incorporation.isoformat(),
+            "is_enterprise": "on",
+            "ssm_document_expiry": (
+                timezone.localdate() + timedelta(days=30)
+            ).isoformat(),
+        }
+        missing = vendor_client(company.owner, company).post(url, data)
+        self.assertEqual(missing.status_code, 200)
+        self.assertContains(missing, "Upload the owner's IC")
+
+        data["ic_pdf"] = SimpleUploadedFile(
+            "owner-ic.jpg", b"fake-image-bytes", content_type="image/jpeg"
+        )
+        uploaded = vendor_client(company.owner, company).post(url, data)
+        self.assertRedirects(uploaded, reverse("vendors:wizard_step", args=[company.pk, 3]))
+        self.assertTrue(
+            company.documents.filter(
+                doc_type=CompanyDocument.DocType.IC,
+                original_filename="owner-ic.jpg",
+            ).exists()
+        )
 
 
 class CompanyDeletionRetentionTests(TestCase):

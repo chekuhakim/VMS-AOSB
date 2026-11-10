@@ -25,11 +25,6 @@ urlpatterns = [
         name="resubmit_correction",
     ),
     path(
-        "envelope-1/<int:pk>/draft-msa/",
-        views.download_draft_msa,
-        name="draft_msa",
-    ),
-    path(
         "envelope-1/<int:pk>/no-advance-declaration/",
         views.download_no_advance_declaration,
         name="no_advance_template",

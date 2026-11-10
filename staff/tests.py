@@ -138,7 +138,7 @@ class EnvelopeSegregationOfDutiesTests(TestCase):
             status=S.PENDING_DIRECTOR, locked_at=self.submission.updated_at
         )
         page = staff_client(self.procurement).get(
-            reverse("staff:envelope1_evaluate", args=[self.submission.pk, 6])
+            reverse("staff:envelope1_evaluate", args=[self.submission.pk, 4])
         )
         self.assertContains(page, "Evaluation complete")
         self.assertContains(page, reverse("staff:envelope1_reopen_eval", args=[self.submission.pk]))
@@ -163,7 +163,7 @@ class EnvelopeSegregationOfDutiesTests(TestCase):
         first = client.get(review)
         self.assertContains(first, "Read-only evaluation")
         self.assertNotContains(first, 'name="decision"')
-        last = client.get(reverse("staff:envelope1_evaluate", args=[self.submission.pk, 6]) + "?review=1")
+        last = client.get(reverse("staff:envelope1_evaluate", args=[self.submission.pk, 4]) + "?review=1")
         self.assertContains(last, "Approve")
         self.assertContains(last, "Reject")
         self.assertNotContains(last, "Save Progress")
@@ -229,7 +229,7 @@ class EnvelopeSegregationOfDutiesTests(TestCase):
         )
 
         eval_page = staff_client(self.procurement).get(
-            reverse("staff:envelope1_evaluate", args=[self.submission.pk, 6])
+            reverse("staff:envelope1_evaluate", args=[self.submission.pk, 4])
         )
         self.assertContains(eval_page, "Return for correction")
 
@@ -239,7 +239,7 @@ class EnvelopeSegregationOfDutiesTests(TestCase):
         )
         self.assertRedirects(
             response,
-            reverse("staff:envelope1_evaluate", args=[self.submission.pk, 6]),
+            reverse("staff:envelope1_evaluate", args=[self.submission.pk, 4]),
         )
         self.submission.refresh_from_db()
         self.assertEqual(self.submission.status, S.RETURNED_FOR_CORRECTION)
@@ -290,7 +290,7 @@ class EnvelopeSegregationOfDutiesTests(TestCase):
             vendor.get(reverse("envelope1:wizard", args=[self.submission.pk, 2])),
             reverse("envelope1:corrections", args=[self.submission.pk]),
         )
-        allowed = vendor.get(reverse("envelope1:wizard", args=[self.submission.pk, 5]))
+        allowed = vendor.get(reverse("envelope1:wizard", args=[self.submission.pk, 3]))
         self.assertEqual(allowed.status_code, 200)
         self.assertContains(allowed, "Correction mode")
         self.assertContains(allowed, "Needs correction", count=1)
