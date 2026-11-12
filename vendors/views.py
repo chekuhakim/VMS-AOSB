@@ -32,6 +32,26 @@ from vendors.forms import (
 from vendors.models import Company, CompanyDocument, VendorInvitation
 from vendors.rules import REASON_LABELS, evaluate_company_registration
 
+def _step_meta_for(company: Company) -> dict[int, dict[str, str]]:
+    """Step labels adapt to the vendor class (individual vendors use IC, not SSM)."""
+    meta = {step: dict(data) for step, data in STEP_META.items()}
+    if company.registration_type == Company.RegistrationType.INDIVIDUAL:
+        meta[1]["title"] = "Basic Info"
+        meta[1]["short"] = "Basic Info"
+        meta[1]["hint"] = (
+            "Use your full name as printed on your IC. SSM is not required for IC-only vendors."
+        )
+        meta[2]["title"] = "Identity (IC)"
+        meta[2]["short"] = "Identity"
+        meta[2]["hint"] = "Enter your IC number and upload a clear IC copy."
+        meta[5]["title"] = "Bank Details"
+        meta[5]["short"] = "Bank"
+        meta[5]["hint"] = (
+            "Bank account Alpha Orange will pay into. LHDN TIN is optional for individuals."
+        )
+    return meta
+
+
 def company_ready_for_msa(company: Company) -> bool:
     """All registration data needed for a complete MSA has been filled in."""
     required_text = [
@@ -480,7 +500,7 @@ def wizard_step(request: HttpRequest, pk: int, step: int) -> HttpResponse:
             "page_title": f"Step {step}: {meta['title']}",
             "company": company,
             "step": step,
-            "steps": STEP_META,
+            "steps": _step_meta_for(company),
             "form": form,
             "has_pdf": {
                 "ssm": has_pdf[CompanyDocument.DocType.SSM],
