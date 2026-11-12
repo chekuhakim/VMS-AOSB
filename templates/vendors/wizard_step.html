@@ -51,73 +51,92 @@
 
       {% elif step == 2 %}
         <div class="space-y-5">
-          <div class="grid gap-5 sm:grid-cols-2">
+          {% if company.registration_type == 'individual' %}
             <div>
-              <label for="{{ form.ssm_registration_number.id_for_label }}" class="block text-sm font-medium text-slate-700">
-                {{ form.ssm_registration_number.label }}
+              <label for="{{ form.ic_number.id_for_label }}" class="block text-sm font-medium text-slate-700">
+                {{ form.ic_number.label }}
               </label>
-              {{ form.ssm_registration_number }}
-              {% if form.ssm_registration_number.errors %}
-                <p class="mt-1 text-xs text-rose-600">{{ form.ssm_registration_number.errors.0 }}</p>
+              {{ form.ic_number }}
+              {% if form.ic_number.errors %}
+                <p class="mt-1 text-xs text-rose-600">{{ form.ic_number.errors.0 }}</p>
               {% endif %}
             </div>
-            <div>
-              <label for="{{ form.date_of_incorporation.id_for_label }}" class="block text-sm font-medium text-slate-700">
-                {{ form.date_of_incorporation.label }}
-              </label>
-              {{ form.date_of_incorporation }}
-              {% if form.date_of_incorporation.errors %}
-                <p class="mt-1 text-xs text-rose-600">{{ form.date_of_incorporation.errors.0 }}</p>
-              {% endif %}
+          {% else %}
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label for="{{ form.ssm_registration_number.id_for_label }}" class="block text-sm font-medium text-slate-700">
+                  {{ form.ssm_registration_number.label }}
+                </label>
+                {{ form.ssm_registration_number }}
+                {% if form.ssm_registration_number.errors %}
+                  <p class="mt-1 text-xs text-rose-600">{{ form.ssm_registration_number.errors.0 }}</p>
+                {% endif %}
+              </div>
+              <div>
+                <label for="{{ form.date_of_incorporation.id_for_label }}" class="block text-sm font-medium text-slate-700">
+                  {{ form.date_of_incorporation.label }}
+                </label>
+                {{ form.date_of_incorporation }}
+                {% if form.date_of_incorporation.errors %}
+                  <p class="mt-1 text-xs text-rose-600">{{ form.date_of_incorporation.errors.0 }}</p>
+                {% endif %}
+              </div>
             </div>
-          </div>
 
-          <label class="flex items-start gap-3 rounded-xl border border-slate-200 bg-cream/60 px-4 py-3 text-sm text-slate-700">
-            {{ form.is_enterprise }}
-            <span>{{ form.is_enterprise.label }}</span>
-          </label>
-          {% if form.is_enterprise.errors %}
-            <p class="text-xs text-rose-600">{{ form.is_enterprise.errors.0 }}</p>
+            {% if company.registration_type == 'enterprise' %}
+              <div id="ssm-expiry-wrap">
+                <label for="{{ form.ssm_document_expiry.id_for_label }}" class="block text-sm font-medium text-slate-700">
+                  {{ form.ssm_document_expiry.label }}
+                </label>
+                {{ form.ssm_document_expiry }}
+                {% if form.ssm_document_expiry.errors %}
+                  <p class="mt-1 text-xs text-rose-600">{{ form.ssm_document_expiry.errors.0 }}</p>
+                {% endif %}
+              </div>
+            {% endif %}
           {% endif %}
 
-          <div id="ssm-expiry-wrap" class="{% if not form.is_enterprise.value %}hidden{% endif %}">
-            <label for="{{ form.ssm_document_expiry.id_for_label }}" class="block text-sm font-medium text-slate-700">
-              {{ form.ssm_document_expiry.label }}
-            </label>
-            {{ form.ssm_document_expiry }}
-            {% if form.ssm_document_expiry.errors %}
-              <p class="mt-1 text-xs text-rose-600">{{ form.ssm_document_expiry.errors.0 }}</p>
-            {% endif %}
-          </div>
+          {% if company.registration_type != 'sdn_bhd' %}
+            <div id="ic-upload-wrap">
+              <label for="{{ form.ic_number.id_for_label }}" class="block text-sm font-medium text-slate-700 {% if company.registration_type == 'individual' %}sr-only{% endif %}">
+                {{ form.ic_number.label }}
+              </label>
+              {% if company.registration_type != 'individual' %}
+                {{ form.ic_number }}
+                {% if form.ic_number.errors %}
+                  <p class="mt-1 text-xs text-rose-600">{{ form.ic_number.errors.0 }}</p>
+                {% endif %}
+              {% endif %}
+              <label for="{{ form.ic_pdf.id_for_label }}" class="mt-3 block text-sm font-medium text-slate-700">
+                {{ form.ic_pdf.label }}
+              </label>
+              {{ form.ic_pdf }}
+              <p class="mt-1 text-xs text-slate-500">
+                Required because this vendor is not a Sdn Bhd. Upload the IC as PDF, JPG, or PNG.
+              </p>
+              {% if has_pdf.ic %}
+                <p class="mt-1 text-xs text-emerald-700">IC already on file — upload again only for a new version.</p>
+              {% endif %}
+              {% if form.ic_pdf.errors %}
+                <p class="mt-1 text-xs text-rose-600">{{ form.ic_pdf.errors.0 }}</p>
+              {% endif %}
+            </div>
+          {% endif %}
 
-          <div id="ic-upload-wrap" class="{% if not form.is_enterprise.value %}hidden{% endif %}">
-            <label for="{{ form.ic_pdf.id_for_label }}" class="block text-sm font-medium text-slate-700">
-              {{ form.ic_pdf.label }}
-            </label>
-            {{ form.ic_pdf }}
-            <p class="mt-1 text-xs text-slate-500">
-              Required because this company is not a Sdn Bhd. Upload the owner's IC as PDF, JPG, or PNG.
-            </p>
-            {% if has_pdf.ic %}
-              <p class="mt-1 text-xs text-emerald-700">IC already on file — upload again only for a new version.</p>
-            {% endif %}
-            {% if form.ic_pdf.errors %}
-              <p class="mt-1 text-xs text-rose-600">{{ form.ic_pdf.errors.0 }}</p>
-            {% endif %}
-          </div>
-
-          <div>
-            <label for="{{ form.ssm_pdf.id_for_label }}" class="block text-sm font-medium text-slate-700">
-              {{ form.ssm_pdf.label }}
-            </label>
-            {{ form.ssm_pdf }}
-            {% if has_pdf.ssm %}
-              <p class="mt-1 text-xs text-emerald-700">SSM PDF already on file — upload again only for a new version.</p>
-            {% endif %}
-            {% if form.ssm_pdf.errors %}
-              <p class="mt-1 text-xs text-rose-600">{{ form.ssm_pdf.errors.0 }}</p>
-            {% endif %}
-          </div>
+          {% if company.registration_type != 'individual' %}
+            <div>
+              <label for="{{ form.ssm_pdf.id_for_label }}" class="block text-sm font-medium text-slate-700">
+                {{ form.ssm_pdf.label }}
+              </label>
+              {{ form.ssm_pdf }}
+              {% if has_pdf.ssm %}
+                <p class="mt-1 text-xs text-emerald-700">SSM PDF already on file — upload again only for a new version.</p>
+              {% endif %}
+              {% if form.ssm_pdf.errors %}
+                <p class="mt-1 text-xs text-rose-600">{{ form.ssm_pdf.errors.0 }}</p>
+              {% endif %}
+            </div>
+          {% endif %}
         </div>
 
       {% elif step == 3 %}
@@ -271,10 +290,17 @@
                   <dd class="text-sm text-slate-600">{{ company.official_email }}</dd>
                 </div>
                 <div>
-                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">SSM</dt>
-                  <dd class="mt-0.5 text-sm text-slate-800">{{ company.ssm_registration_number|default:"—" }}</dd>
-                  {% if company.is_enterprise %}
-                    <dd class="text-xs text-slate-500">Enterprise · expiry {{ company.ssm_document_expiry|date:"d M Y"|default:"—" }}</dd>
+                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">
+                    {% if company.registration_type == 'individual' %}IC{% else %}SSM{% endif %}
+                  </dt>
+                  {% if company.registration_type == 'individual' %}
+                    <dd class="mt-0.5 text-sm text-slate-800">{{ company.ic_number|default:"—" }}</dd>
+                    <dd class="text-xs text-slate-500">Individual · IC only</dd>
+                  {% else %}
+                    <dd class="mt-0.5 text-sm text-slate-800">{{ company.ssm_registration_number|default:"—" }}</dd>
+                    {% if company.registration_type == 'enterprise' %}
+                      <dd class="text-xs text-slate-500">Enterprise · expiry {{ company.ssm_document_expiry|date:"d M Y"|default:"—" }}</dd>
+                    {% endif %}
                   {% endif %}
                 </div>
               </div>
@@ -441,25 +467,6 @@
           }
         })
         return ok
-      }
-
-      var enterprise = document.getElementById('id_is_enterprise')
-      var expiryWrap = document.getElementById('ssm-expiry-wrap')
-      var expiryInput = document.getElementById('id_ssm_document_expiry')
-      var icWrap = document.getElementById('ic-upload-wrap')
-      var icInput = document.getElementById('id_ic_pdf')
-      var icOnFile = {{ has_pdf.ic|yesno:"true,false" }}
-      if (enterprise && expiryWrap) {
-        function syncExpiry() {
-          var on = enterprise.checked
-          expiryWrap.classList.toggle('hidden', !on)
-          if (icWrap) icWrap.classList.toggle('hidden', !on)
-          setRequired(expiryInput, on)
-          setRequired(icInput, on && !icOnFile)
-          if (!on && expiryInput) expiryInput.value = ''
-        }
-        enterprise.addEventListener('change', syncExpiry)
-        syncExpiry()
       }
 
       var noCidb = document.getElementById('id_no_cidb_registration')

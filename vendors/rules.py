@@ -45,17 +45,28 @@ def evaluate_company_registration(company: Company) -> EvaluationResult:
     if not (company.name and company.primary_contact_name and company.contact_number and company.official_email):
         reasons.append("incomplete_company_profile")
 
-    # Step 2
-    if not (company.ssm_registration_number and company.date_of_incorporation):
-        reasons.append("incomplete_ssm")
-    ssm_doc = _latest_doc(company, CompanyDocument.DocType.SSM)
-    if ssm_doc is None:
-        reasons.append("missing_ssm_document")
-    if company.is_enterprise:
-        if company.ssm_document_expiry is None:
-            reasons.append("missing_ssm_expiry")
-        elif _expired(company.ssm_document_expiry, today):
-            reasons.append("ssm_document_expired")
+    # Step 2 — IC-only individuals replace the SSM block with an IC.
+    individual = company.registration_type == Company.RegistrationType.INDIVIDUAL
+    if individual:
+        if not company.ic_number:
+            reasons.append("missing_ic_number")
+        if _latest_doc(company, CompanyDocument.DocType.IC) is None:
+            reasons.append("missing_ic_document")
+    else:
+        if not (company.ssm_registration_number and company.date_of_incorporation):
+            reasons.append("incomplete_ssm")
+        ssm_doc = _latest_doc(company, CompanyDocument.DocType.SSM)
+        if ssm_doc is None:
+            reasons.append("missing_ssm_document")
+        if company.registration_type == Company.RegistrationType.ENTERPRISE:
+            if company.ssm_document_expiry is None:
+                reasons.append("missing_ssm_expiry")
+            elif _expired(company.ssm_document_expiry, today):
+                reasons.append("ssm_document_expired")
+            if not company.ic_number:
+                reasons.append("missing_ic_number")
+            if _latest_doc(company, CompanyDocument.DocType.IC) is None:
+                reasons.append("missing_ic_document")
 
     # Step 3 — skipped when the vendor declared they hold no CIDB registration.
     # A blank grade still fails any tender that sets a minimum CIDB grade.
@@ -84,12 +95,13 @@ def evaluate_company_registration(company: Company) -> EvaluationResult:
         if _expired(company.st_certificate_expiry, today):
             reasons.append("st_certificate_expired")
 
-    # Step 5
+    # Step 5 — LHDN TIN is optional for IC-only individuals; bank is still required.
     bank_named = company.bank_name and (
         company.bank_name != Company.Bank.OTHER or company.bank_name_other
     )
+    lhdn_ok = company.lhdn_tin or individual
     if not (
-        company.lhdn_tin
+        lhdn_ok
         and bank_named
         and company.bank_account_number
         and company.bank_account_name
@@ -109,6 +121,8 @@ REASON_LABELS: dict[str, str] = {
     "missing_ssm_document": "SSM statutory PDF is missing.",
     "missing_ssm_expiry": "Enterprise SSM document expiry date is required.",
     "ssm_document_expired": "SSM document is expired.",
+    "missing_ic_number": "IC number is required.",
+    "missing_ic_document": "IC document is missing.",
     "incomplete_cidb": "CIDB registration details are incomplete.",
     "missing_cidb_document": "CIDB certificate PDF is missing.",
     "cidb_certificate_expired": "CIDB certificate is expired.",

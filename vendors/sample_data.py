@@ -48,6 +48,7 @@ def sample_identifiers() -> dict[str, str]:
         "cidb_registration_number": f"CIDB-{_random_digits(7)}",
         "st_license_number": f"ST-{_random_digits(6)}",
         "lhdn_tin": f"C{_random_digits(10)}",
+        "ic_number": f"{_random_digits(6)}-{_random_digits(2)}-{_random_digits(4)}",
     }
 
 
@@ -70,6 +71,7 @@ def create_sample_company(*, owner: AbstractBaseUser) -> Company:
         name=unique_sample_name(owner),
         wizard_step=6,
         registration_status=Company.RegistrationStatus.DRAFT,
+        registration_type=Company.RegistrationType.ENTERPRISE,
         # Step 1
         primary_contact_name="Abu bin Bakar",
         contact_number="0123456789",
@@ -80,8 +82,8 @@ def create_sample_company(*, owner: AbstractBaseUser) -> Company:
         # Step 2
         ssm_registration_number=ids["ssm_registration_number"],
         date_of_incorporation=date(2018, 3, 15),
-        is_enterprise=True,
         ssm_document_expiry=today + timedelta(days=400),
+        ic_number=ids["ic_number"],
         # Step 3
         cidb_registration_number=ids["cidb_registration_number"],
         cidb_grade="G5",

@@ -16,6 +16,7 @@ UNIQUE_IDENTIFIER_FIELDS: dict[str, str] = {
     "cidb_registration_number": "CIDB Registration Number",
     "st_license_number": "ST License Number",
     "lhdn_tin": "LHDN TIN",
+    "ic_number": "IC Number",
 }
 
 
@@ -39,6 +40,11 @@ class Company(models.Model):
         SUBMITTED = "submitted", "Submitted"
         APPROVED = "approved", "Approved"
         REJECTED = "rejected", "Rejected"
+
+    class RegistrationType(models.TextChoices):
+        SDN_BHD = "sdn_bhd", "Sdn Bhd"
+        ENTERPRISE = "enterprise", "Enterprise"
+        INDIVIDUAL = "individual", "Individual (IC only)"
 
     class Bank(models.TextChoices):
         MAYBANK = "maybank", "Maybank"
@@ -79,14 +85,20 @@ class Company(models.Model):
     msa_signatory_name = models.CharField(max_length=150, blank=True)
     msa_signatory_designation = models.CharField(max_length=150, blank=True)
 
-    # --- Step 2: SSM E-info ---
+    # --- Step 1: Registration class ---
+    registration_type = models.CharField(
+        max_length=20,
+        choices=RegistrationType.choices,
+        default=RegistrationType.SDN_BHD,
+        db_index=True,
+    )
+
+    # --- Step 2: SSM / identity ---
     ssm_registration_number = models.CharField(max_length=50, blank=True)
     date_of_incorporation = models.DateField(null=True, blank=True)
-    is_enterprise = models.BooleanField(
-        default=False,
-        help_text="Enterprises must provide an SSM document expiry date.",
-    )
     ssm_document_expiry = models.DateField(null=True, blank=True)
+    # Individual vendors register with an IC instead of an SSM record.
+    ic_number = models.CharField(max_length=20, blank=True)
 
     # --- Step 3: CIDB ---
     # Opt-out is explicit: a company with no CIDB registration can still be approved,
@@ -162,6 +174,11 @@ class Company(models.Model):
     def is_editable(self) -> bool:
         """Vendors may edit drafts and re-submit rejected/approved records."""
         return True
+
+    @property
+    def is_enterprise(self) -> bool:
+        """Backwards-compatible view over the explicit registration class."""
+        return self.registration_type == self.RegistrationType.ENTERPRISE
 
     @property
     def bank_display(self) -> str:

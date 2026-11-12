@@ -227,32 +227,84 @@ class RegistrationMsaAndIcTests(TestCase):
     def test_enterprise_requires_ic_and_accepts_image(self) -> None:
         company = self._company("ic-upload")
         company.documents.filter(doc_type=CompanyDocument.DocType.IC).delete()
-        company.is_enterprise = True
-        company.save(update_fields=["is_enterprise"])
+        company.registration_type = Company.RegistrationType.ENTERPRISE
+        company.save(update_fields=["registration_type"])
         url = reverse("vendors:wizard_step", args=[company.pk, 2])
         data = {
             "ssm_registration_number": company.ssm_registration_number,
             "date_of_incorporation": company.date_of_incorporation.isoformat(),
-            "is_enterprise": "on",
             "ssm_document_expiry": (
                 timezone.localdate() + timedelta(days=30)
             ).isoformat(),
+            "ic_number": "880101-12-3456",
         }
         missing = vendor_client(company.owner, company).post(url, data)
         self.assertEqual(missing.status_code, 200)
-        self.assertContains(missing, "Upload the owner's IC")
+        self.assertContains(missing, "Upload the owner")
 
         data["ic_pdf"] = SimpleUploadedFile(
             "owner-ic.jpg", b"fake-image-bytes", content_type="image/jpeg"
         )
         uploaded = vendor_client(company.owner, company).post(url, data)
         self.assertRedirects(uploaded, reverse("vendors:wizard_step", args=[company.pk, 3]))
+        company.refresh_from_db()
+        self.assertEqual(company.ic_number, "880101-12-3456")
         self.assertTrue(
             company.documents.filter(
                 doc_type=CompanyDocument.DocType.IC,
                 original_filename="owner-ic.jpg",
             ).exists()
         )
+
+    def test_individual_registers_with_ic_only(self) -> None:
+        company = self._company("ic-only")
+        company.registration_type = Company.RegistrationType.INDIVIDUAL
+        company.save(update_fields=["registration_type"])
+        company.documents.filter(doc_type=CompanyDocument.DocType.SSM).delete()
+        url = reverse("vendors:wizard_step", args=[company.pk, 2])
+        response = vendor_client(company.owner, company).post(
+            url,
+            {
+                "ic_number": "890202-14-5678",
+                "ic_pdf": SimpleUploadedFile(
+                    "ic-only.jpg", b"fake-image", content_type="image/jpeg"
+                ),
+            },
+        )
+        self.assertRedirects(response, reverse("vendors:wizard_step", args=[company.pk, 3]))
+        company.refresh_from_db()
+        self.assertEqual(company.registration_type, Company.RegistrationType.INDIVIDUAL)
+        self.assertEqual(company.ssm_registration_number, "")
+        self.assertIsNone(company.date_of_incorporation)
+        self.assertEqual(company.ic_number, "890202-14-5678")
+        self.assertTrue(
+            company.documents.filter(doc_type=CompanyDocument.DocType.IC).exists()
+        )
+        self.assertFalse(
+            company.documents.filter(doc_type=CompanyDocument.DocType.SSM).exists()
+        )
+
+    def test_individual_registration_can_be_approved_without_ssm(self) -> None:
+        company = self._company("ic-only-rules")
+        company.registration_type = Company.RegistrationType.INDIVIDUAL
+        company.ic_number = "890202-14-5678"
+        company.lhdn_tin = ""
+        company.no_cidb_registration = True
+        company.cidb_registration_number = ""
+        company.cidb_grade = ""
+        company.cidb_certificate_expiry = None
+        company.includes_electrical_work = False
+        company.st_license_number = ""
+        company.st_certificate_expiry = None
+        company.declaration_accepted = True
+        company.declaration_text_version = "test"
+        company.save()
+        company.documents.filter(doc_type=CompanyDocument.DocType.SSM).delete()
+        result = evaluate_company_registration(company)
+        self.assertTrue(result.approved, result.reason_codes)
+        self.assertNotIn("incomplete_ssm", result.reason_codes)
+        self.assertNotIn("missing_ssm_document", result.reason_codes)
+        self.assertNotIn("incomplete_lhdn", result.reason_codes)
 
 
 class CompanyDeletionRetentionTests(TestCase):

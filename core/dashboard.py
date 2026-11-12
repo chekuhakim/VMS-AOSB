@@ -307,6 +307,12 @@ def build_expiry_warnings(company: Company | None) -> list[ExpiryItem]:
             .first()
         )
         expiry = doc.expiry_date if doc and doc.expiry_date else fallback
+        # IC-only individuals do not have an SSM record.
+        if (
+            doc_type == CompanyDocument.DocType.SSM
+            and company.registration_type == Company.RegistrationType.INDIVIDUAL
+        ):
+            continue
         # Skip SSM expiry when not an enterprise and no document expiry on file
         if doc_type == CompanyDocument.DocType.SSM and not company.is_enterprise and not expiry:
             continue

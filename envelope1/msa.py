@@ -38,13 +38,19 @@ def no_advance_download_filename(party: Any) -> str:
 def _party_context(party: Any) -> dict[str, str]:
     today = timezone.localdate()
     address = " ".join((getattr(party, "principal_address", "") or "").split())
+    registration_type = getattr(party, "registration_type", None)
+    if registration_type == "individual":
+        company_no = getattr(party, "ic_number", "") or ""
+    else:
+        company_no = getattr(party, "ssm_registration_number", "") or ""
     return {
         "day": f"{today.day:02d}",
         "month": today.strftime("%B"),
         "year": str(today.year),
         "company_name": _legal_name(party),
-        "company_no": getattr(party, "ssm_registration_number", "") or "",
+        "company_no": company_no,
         "address": address,
+        "registration_type": str(registration_type or ""),
         "signatory_name": getattr(party, "msa_signatory_name", "") or "",
         "signatory_designation": getattr(party, "msa_signatory_designation", "") or "",
     }
@@ -65,7 +71,15 @@ def render_draft_msa_html(party: Any) -> str:
             {
                 k: v
                 for k, v in ctx.items()
-                if k in ("day", "month", "year", "company_name", "company_no", "address")
+                if k in (
+                    "day",
+                    "month",
+                    "year",
+                    "company_name",
+                    "company_no",
+                    "address",
+                    "registration_type",
+                )
             }
         )
     )

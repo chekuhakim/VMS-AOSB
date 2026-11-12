@@ -34,7 +34,7 @@ from vendors.rules import REASON_LABELS, evaluate_company_registration
 
 def company_ready_for_msa(company: Company) -> bool:
     """All registration data needed for a complete MSA has been filled in."""
-    required_text = (
+    required_text = [
         company.name,
         company.primary_contact_name,
         company.contact_number,
@@ -42,24 +42,33 @@ def company_ready_for_msa(company: Company) -> bool:
         company.principal_address,
         company.msa_signatory_name,
         company.msa_signatory_designation,
-        company.ssm_registration_number,
-        company.lhdn_tin,
         company.bank_name,
         company.bank_account_number,
         company.bank_account_name,
-    )
+    ]
+    if company.registration_type != Company.RegistrationType.INDIVIDUAL:
+        required_text.extend(
+            [company.ssm_registration_number, company.lhdn_tin]
+        )
     if any(not (value or "").strip() for value in required_text):
         return False
-    if company.date_of_incorporation is None:
+    if company.registration_type == Company.RegistrationType.INDIVIDUAL:
+        if not company.ic_number:
+            return False
+    elif company.date_of_incorporation is None:
         return False
     docs = set(company.documents.values_list("doc_type", flat=True))
-    if CompanyDocument.DocType.SSM not in docs:
-        return False
-    if company.is_enterprise:
-        if company.ssm_document_expiry is None:
-            return False
+    if company.registration_type == Company.RegistrationType.INDIVIDUAL:
         if CompanyDocument.DocType.IC not in docs:
             return False
+    else:
+        if CompanyDocument.DocType.SSM not in docs:
+            return False
+        if company.registration_type == Company.RegistrationType.ENTERPRISE:
+            if company.ssm_document_expiry is None:
+                return False
+            if CompanyDocument.DocType.IC not in docs:
+                return False
     if company.no_cidb_registration:
         pass
     elif not (
@@ -608,12 +617,13 @@ def _submit_registration(request: HttpRequest, company: Company) -> HttpResponse
             "Upload the signed Master Service Agreement in Basic Info before submitting.",
         )
         return redirect("vendors:wizard_step", pk=company.pk, step=1)
-    if company.is_enterprise and not company.documents.filter(
-        doc_type=CompanyDocument.DocType.IC
-    ).exists():
+    if company.registration_type != Company.RegistrationType.SDN_BHD and not (
+        company.documents.filter(doc_type=CompanyDocument.DocType.IC).exists()
+        and company.ic_number
+    ):
         messages.error(
             request,
-            "Upload the owner's IC in SSM E-info because this company is not a Sdn Bhd.",
+            "Complete the IC details in SSM / Identity because this vendor is not a Sdn Bhd.",
         )
         return redirect("vendors:wizard_step", pk=company.pk, step=2)
 

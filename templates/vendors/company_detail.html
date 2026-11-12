@@ -69,11 +69,20 @@
     <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <h3 class="text-sm font-semibold text-slate-900">SSM</h3>
       <dl class="mt-3 space-y-2 text-sm">
-        <div><dt class="text-xs text-slate-500">Registration no.</dt><dd>{{ company.ssm_registration_number|default:"—" }}</dd></div>
-        <div><dt class="text-xs text-slate-500">Incorporation</dt><dd>{{ company.date_of_incorporation|date:"d M Y"|default:"—" }}</dd></div>
-        <div><dt class="text-xs text-slate-500">Document</dt>
-          <dd>{% if latest_docs.ssm %}{{ latest_docs.ssm.original_filename }} (v{{ latest_docs.ssm.version }}){% else %}—{% endif %}</dd>
-        </div>
+        {% if company.registration_type == 'individual' %}
+          <div><dt class="text-xs text-slate-500">Registration class</dt><dd>Individual (IC only)</dd></div>
+          <div><dt class="text-xs text-slate-500">IC number</dt><dd>{{ company.ic_number|default:"—" }}</dd></div>
+        {% else %}
+          <div><dt class="text-xs text-slate-500">Registration no.</dt><dd>{{ company.ssm_registration_number|default:"—" }}</dd></div>
+          <div><dt class="text-xs text-slate-500">Incorporation</dt><dd>{{ company.date_of_incorporation|date:"d M Y"|default:"—" }}</dd></div>
+          <div><dt class="text-xs text-slate-500">Document</dt>
+            <dd>{% if latest_docs.ssm %}{{ latest_docs.ssm.original_filename }} (v{{ latest_docs.ssm.version }}){% else %}—{% endif %}</dd>
+          {% if company.registration_type == 'enterprise' %}
+            <div><dt class="text-xs text-slate-500">Class</dt><dd>Enterprise</dd></div>
+          {% else %}
+            <div><dt class="text-xs text-slate-500">Class</dt><dd>Sdn Bhd</dd></div>
+          {% endif %}
+        {% endif %}
       </dl>
     </section>
     <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">

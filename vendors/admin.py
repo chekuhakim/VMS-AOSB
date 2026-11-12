@@ -20,9 +20,22 @@ class CompanyDocumentInline(admin.TabularInline):
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
-    list_display = ("name", "owner", "registration_status", "wizard_step", "updated_at")
-    list_filter = ("registration_status", "is_enterprise", "includes_electrical_work")
-    search_fields = ("name", "owner__username", "owner__email", "ssm_registration_number")
+    list_display = (
+        "name",
+        "owner",
+        "registration_status",
+        "registration_type",
+        "wizard_step",
+        "updated_at",
+    )
+    list_filter = ("registration_status", "registration_type", "includes_electrical_work")
+    search_fields = (
+        "name",
+        "owner__username",
+        "owner__email",
+        "ssm_registration_number",
+        "ic_number",
+    )
     raw_id_fields = ("owner",)
     inlines = [CompanyDocumentInline]
 

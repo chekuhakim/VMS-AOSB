@@ -16,7 +16,12 @@
       <dl class="mt-4 space-y-3 text-sm">
         <div class="flex justify-between gap-4"><dt class="text-slate-500">Contact</dt><dd class="text-slate-900">{{ company.primary_contact_name|default:"—" }}</dd></div>
         <div class="flex justify-between gap-4"><dt class="text-slate-500">Email</dt><dd class="text-slate-900">{{ company.official_email|default:"—" }}</dd></div>
-        <div class="flex justify-between gap-4"><dt class="text-slate-500">SSM</dt><dd class="text-slate-900">{{ company.ssm_registration_number|default:"—" }}</dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-slate-500">Class</dt><dd class="text-slate-900">{{ company.get_registration_type_display }}</dd></div>
+        {% if company.registration_type == 'individual' %}
+          <div class="flex justify-between gap-4"><dt class="text-slate-500">IC number</dt><dd class="text-slate-900">{{ company.ic_number|default:"—" }}</dd></div>
+        {% else %}
+          <div class="flex justify-between gap-4"><dt class="text-slate-500">SSM</dt><dd class="text-slate-900">{{ company.ssm_registration_number|default:"—" }}</dd></div>
+        {% endif %}
         <div class="flex justify-between gap-4"><dt class="text-slate-500">Address</dt><dd class="text-right text-slate-900">{{ company.principal_address|default:"—"|linebreaksbr }}</dd></div>
         <div class="flex justify-between gap-4"><dt class="text-slate-500">MSA signatory</dt><dd class="text-slate-900">{{ company.msa_signatory_name|default:"—" }} · {{ company.msa_signatory_designation|default:"—" }}</dd></div>
         <div class="flex justify-between gap-4"><dt class="text-slate-500">CIDB</dt><dd class="text-slate-900">{% if company.no_cidb_registration %}No CIDB registration{% else %}{{ company.cidb_grade|default:"—" }} · {{ company.cidb_registration_number|default:"—" }}{% endif %}</dd></div>

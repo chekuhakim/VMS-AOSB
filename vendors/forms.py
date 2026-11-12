@@ -132,6 +132,7 @@ class Step1ProfileForm(forms.ModelForm):
     class Meta:
         model = Company
         fields = (
+            "registration_type",
             "name",
             "primary_contact_name",
             "contact_number",
@@ -141,6 +142,7 @@ class Step1ProfileForm(forms.ModelForm):
             "msa_signatory_designation",
         )
         labels = {
+            "registration_type": "Registration class",
             "name": "Registered Company Name",
             "primary_contact_name": "Primary Contact Person",
             "contact_number": "Contact Number",
@@ -150,6 +152,7 @@ class Step1ProfileForm(forms.ModelForm):
             "msa_signatory_designation": "MSA Signatory Designation",
         }
         widgets = {
+            "registration_type": forms.Select(attrs=_INPUT),
             "name": forms.TextInput(
                 attrs={**_INPUT, "placeholder": "e.g. Cahaya Sdn Bhd"}
             ),
@@ -171,6 +174,15 @@ class Step1ProfileForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.required = True
+        registration_type = (
+            self.data.get("registration_type")
+            or self.initial.get("registration_type")
+            or self.instance.registration_type
+            or Company.RegistrationType.SDN_BHD
+        )
+        if registration_type == Company.RegistrationType.INDIVIDUAL:
+            self.fields["name"].label = "Full name (as on IC)"
+            self.fields["name"].widget.attrs["placeholder"] = "e.g. Abu bin Bakar"
         _mark_required_labels(self)
 
 
@@ -191,41 +203,47 @@ class Step2SSMForm(forms.ModelForm):
         fields = (
             "ssm_registration_number",
             "date_of_incorporation",
-            "is_enterprise",
             "ssm_document_expiry",
+            "ic_number",
         )
         labels = {
             "ssm_registration_number": "SSM Registration Number",
             "date_of_incorporation": "Date of Incorporation",
-            "is_enterprise": "This company is an enterprise (requires SSM document expiry)",
             "ssm_document_expiry": "SSM Document Expiry",
+            "ic_number": "IC Number",
         }
         widgets = {
             "ssm_registration_number": forms.TextInput(attrs=_INPUT),
             "date_of_incorporation": forms.DateInput(attrs={**_INPUT, "type": "date"}),
-            "is_enterprise": forms.CheckboxInput(attrs=_CHECK),
             "ssm_document_expiry": forms.DateInput(attrs={**_INPUT, "type": "date"}),
+            "ic_number": forms.TextInput(attrs={**_INPUT, "inputmode": "numeric"}),
         }
 
     def __init__(self, *args, **kwargs) -> None:  # type: ignore[no-untyped-def]
         self.require_pdf = kwargs.pop("require_pdf", True)
         self.has_ic = kwargs.pop("has_ic", False)
         super().__init__(*args, **kwargs)
-        self.fields["ssm_registration_number"].required = True
-        self.fields["date_of_incorporation"].required = True
-        self.fields["is_enterprise"].required = False
-        # Expiry only required when enterprise is checked (enforced in clean + UI)
+        self.registration_type = self.instance.registration_type
+        is_individual = self.registration_type == Company.RegistrationType.INDIVIDUAL
+        is_enterprise = self.registration_type == Company.RegistrationType.ENTERPRISE
+
+        self.fields["ssm_registration_number"].required = not is_individual
+        self.fields["date_of_incorporation"].required = not is_individual
         self.fields["ssm_document_expiry"].required = False
-        self.fields["ssm_pdf"].required = self.require_pdf
+        self.fields["ic_number"].required = False
+        self.fields["ssm_pdf"].required = self.require_pdf and not is_individual
         self.fields["ic_pdf"].required = False
         _require_future_or_today(self.fields["ssm_document_expiry"])
         _mark_required_labels(self)
-        # Enterprise checkbox is optional — do not force * on its label
-        self.fields["is_enterprise"].label = (
-            "This company is an enterprise (requires SSM document expiry)"
-        )
-        # Expiry asterisk shown in template when visible; keep base label clean
-        self.fields["ssm_document_expiry"].label = required_label("SSM Document Expiry")
+        for name in ("ssm_registration_number", "date_of_incorporation"):
+            if self.fields[name].required:
+                self.fields[name].label = required_label(self.fields[name].label or name)
+        if is_enterprise:
+            self.fields["ssm_document_expiry"].label = required_label(
+                "SSM Document Expiry"
+            )
+        if is_individual:
+            self.fields["ic_number"].label = required_label("IC Number")
 
     def clean_ssm_pdf(self):
         pdf = self.cleaned_data.get("ssm_pdf")
@@ -241,13 +259,36 @@ class Step2SSMForm(forms.ModelForm):
 
     def clean(self) -> dict:
         cleaned = super().clean()
+        individual = self.registration_type == Company.RegistrationType.INDIVIDUAL
+        if individual:
+            # An IC-only vendor has no SSM record.
+            cleaned["ssm_registration_number"] = ""
+            cleaned["date_of_incorporation"] = None
+            cleaned["ssm_document_expiry"] = None
+            cleaned["ssm_pdf"] = None
+            _check_unique_identifier(self, cleaned, "ic_number")
+            if not cleaned.get("ic_number"):
+                self.add_error("ic_number", "IC number is required.")
+            if not cleaned.get("ic_pdf") and not self.has_ic:
+                self.add_error("ic_pdf", "Upload the IC as PDF, JPG, or PNG.")
+            return cleaned
+
         _check_unique_identifier(self, cleaned, "ssm_registration_number")
-        if cleaned.get("is_enterprise"):
+        if not cleaned.get("ssm_registration_number"):
+            self.add_error("ssm_registration_number", "SSM registration number is required.")
+        if not cleaned.get("date_of_incorporation"):
+            self.add_error("date_of_incorporation", "Date of incorporation is required.")
+
+        if self.registration_type == Company.RegistrationType.ENTERPRISE:
             expiry = cleaned.get("ssm_document_expiry")
             if not expiry:
                 self.add_error("ssm_document_expiry", "Required for enterprises.")
             elif expiry < timezone.localdate():
                 self.add_error("ssm_document_expiry", "Document is already expired.")
+            cleaned["ic_number"] = normalize_identifier(cleaned.get("ic_number"))
+            _check_unique_identifier(self, cleaned, "ic_number")
+            if not cleaned.get("ic_number"):
+                self.add_error("ic_number", "IC number is required for enterprises.")
             if not cleaned.get("ic_pdf") and not self.has_ic:
                 self.add_error(
                     "ic_pdf",
@@ -255,6 +296,8 @@ class Step2SSMForm(forms.ModelForm):
                 )
         else:
             cleaned["ssm_document_expiry"] = None
+            cleaned["ic_number"] = ""
+            cleaned["ic_pdf"] = None
         return cleaned
 
 
@@ -467,12 +510,15 @@ class Step5LHDNForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs) -> None:  # type: ignore[no-untyped-def]
         super().__init__(*args, **kwargs)
+        individual = self.instance.registration_type == Company.RegistrationType.INDIVIDUAL
         for name in ("lhdn_tin", "bank_name", "bank_account_number", "bank_account_name"):
-            self.fields[name].required = True
+            self.fields[name].required = not individual
         self.fields["bank_name"].choices = [("", "Select bank")] + list(Company.Bank.choices)
         self.fields["bank_name_other"].required = False
         _mark_required_labels(self)
         self.fields["bank_name_other"].label = required_label("Other Bank Name")
+        if individual:
+            self.fields["lhdn_tin"].help_text = "Optional for individual vendors."
 
     def clean_bank_account_number(self) -> str:
         # Payment runs need a clean numeric account number; spaces/dashes are display-only

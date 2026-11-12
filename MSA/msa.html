@@ -132,7 +132,7 @@
 
     <p>AND</p>
 
-    <p><strong>{% if company_name %}{{ company_name }}{% else %}<span class="blank long"></span>{% endif %}</strong> (Company No: {% if company_no %}{{ company_no }}{% else %}<span class="blank"></span>{% endif %}), (hereinafter referred to as “Contractor”), located at {% if address %}{{ address }}{% else %}<span class="blank long"></span>{% endif %}.</p>
+    <p><strong>{% if company_name %}{{ company_name }}{% else %}<span class="blank long"></span>{% endif %}</strong> ({% if registration_type == 'individual' %}IC No:{% else %}Company No:{% endif %} {% if company_no %}{{ company_no }}{% else %}<span class="blank"></span>{% endif %}), (hereinafter referred to as “Contractor”), located at {% if address %}{{ address }}{% else %}<span class="blank long"></span>{% endif %}.</p>
 
     <p><strong>WHEREAS</strong> Client is a telecommunications infrastructure company (Towerco) and desires to engage Contractor for various services related to the construction, erection, and maintenance of telecommunication towers and associated civil, mechanical, and electrical works; and</p>
 
