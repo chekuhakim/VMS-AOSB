@@ -152,7 +152,12 @@ class Step1ProfileForm(forms.ModelForm):
             "msa_signatory_designation": "MSA Signatory Designation",
         }
         widgets = {
-            "registration_type": forms.Select(attrs=_INPUT),
+            "registration_type": forms.RadioSelect(
+                attrs={
+                    "class": "sr-only",
+                    "aria-label": "Registration class",
+                }
+            ),
             "name": forms.TextInput(
                 attrs={**_INPUT, "placeholder": "e.g. Cahaya Sdn Bhd"}
             ),
