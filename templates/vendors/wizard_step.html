@@ -50,9 +50,9 @@
                       {{ choice.tag }}
                       <span class="block text-base font-semibold text-slate-900">{{ choice.choice_label }}</span>
                       <span class="mt-1 block text-xs text-slate-500">
-                        {% if choice.value == 'sdn_bhd' %}
+                        {% if choice.data.value == 'sdn_bhd' %}
                           Registered Sdn Bhd with SSM number and SSM document.
-                        {% elif choice.value == 'enterprise' %}
+                        {% elif choice.data.value == 'enterprise' %}
                           Registered enterprise with SSM document plus owner IC.
                         {% else %}
                           IC-only vendor. No SSM record needed; LHDN TIN is optional.
