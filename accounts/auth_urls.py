@@ -6,7 +6,7 @@ from django.urls import include, path, re_path
 from accounts import views as accounts_views
 
 urlpatterns = [
-    path("register/", allauth_views.signup, name="account_signup"),
+    path("register/", accounts_views.InvitedSignupView.as_view(), name="account_signup"),
     path(
         "register/confirm-email/",
         allauth_views.email_verification_sent,

@@ -9,6 +9,7 @@ from allauth.account.internal.flows.email_verification_by_code import (
     EmailVerificationProcess,
 )
 from allauth.account.internal.stagekit import clear_login
+from allauth.account.views import SignupView
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse, JsonResponse
@@ -150,3 +151,16 @@ def notifications_mark_all_read(request: HttpRequest) -> HttpResponse:
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return JsonResponse({"ok": True})
     return redirect(_safe_next(request, request.POST.get("next")))
+
+
+class InvitedSignupView(SignupView):
+    """Signup view that pre-fills the invited vendor's email from the link."""
+
+    def get_initial(self) -> dict:
+        initial = super().get_initial()
+        email = (self.request.GET.get("email") or "").strip()
+        if email and not initial.get("email"):
+            initial["email"] = email
+        if email and not initial.get("username"):
+            initial["username"] = email.split("@", 1)[0].replace("+", ".")
+        return initial
